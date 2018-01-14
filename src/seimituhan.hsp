@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.646"
-#define	build		"(build20150121)"
+#define	ver			"0.647"
+#define	build		"(build20150730)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
 #define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
 
@@ -1417,7 +1417,7 @@ if sor==16 {
 			noteadd "<td class=\"sha\">"+chrhy(n(i))+"</td>"
 		}
 		if mode==2 {
-			string="http:\/\/chart.apis.google.com\/chart?cht=r&chxt=y,x&chls=4|4&chco=FF0000,00FF00&chxp=0,0,20,40,60,80,100&chd=t:"+avgpitch(n(i))
+			string="https:\/\/chart.googleapis.com\/chart?cht=r&chxt=y,x&chls=4|4&chco=FF0000,00FF00&chxp=0,0,20,40,60,80,100&chd=t:"+avgpitch(n(i))
 			string = string + ","+ avgstab(n(i)) +"," + avgexpress(n(i)) + "," + avgvib(n(i)) + "," + avgrhy(n(i)) + "," + avgpitch(n(i))
 			string = string + "|" + mel(n(i)) + "," + chstab(n(i)) + "," + chexpress(n(i)) + "," + chvib(n(i)) + "," + chrhy(n(i)) + "," + mel(n(i))
 			string = string + "&chxl=1:|%e9%9f%b3%e7%a8%8b|%e5%ae%89%e5%ae%9a%e6%80%a7|%e8%a1%a8%e7%8f%be%e5%8a%9b|%e3%83%93%e3%83%96%e3%83%a9%e3%83%bc%e3%83%88|%e3%83%aa%e3%82%ba%e3%83%a0"
@@ -1691,7 +1691,7 @@ if sor==16 {
 			add_string "<td class=\"sha\">"+chrhy(n(i))+"</td>"
 		}
 		if mode==2 {
-			string="http:\/\/chart.apis.google.com\/chart?cht=r&chxt=y,x&chls=4|4&chco=FF0000,00FF00&chxp=0,0,20,40,60,80,100&chd=t:"+avgpitch(n(i))
+			string="https:\/\/chart.googleapis.com\/chart?cht=r&chxt=y,x&chls=4|4&chco=FF0000,00FF00&chxp=0,0,20,40,60,80,100&chd=t:"+avgpitch(n(i))
 			string = string + ","+ avgstab(n(i)) +"," + avgexpress(n(i)) + "," + avgvib(n(i)) + "," + avgrhy(n(i)) + "," + avgpitch(n(i))
 			string = string + "|" + mel(n(i)) + "," + chstab(n(i)) + "," + chexpress(n(i)) + "," + chvib(n(i)) + "," + chrhy(n(i)) + "," + mel(n(i))
 			string = string + "&chxl=1:|%e9%9f%b3%e7%a8%8b|%e5%ae%89%e5%ae%9a%e6%80%a7|%e8%a1%a8%e7%8f%be%e5%8a%9b|%e3%83%93%e3%83%96%e3%83%a9%e3%83%bc%e3%83%88|%e3%83%aa%e3%82%ba%e3%83%a0"
