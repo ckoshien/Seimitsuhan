@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.641"
-#define	build		"(build20120918)"
+#define	ver			"0.642"
+#define	build		"(build20130522)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
 #define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
 
@@ -1489,78 +1489,78 @@ if sor==16 {
 
 *kokken
 	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
-		noteadd "<TD colspan=2 bgcolor=#717075>&nbsp;</TD><!-- 黒 "+key+"-->";灰
+		noteadd "<TD colspan=2 bgcolor=#717075>&nbsp;</TD>";<!-- 黒 "+key+"-->";灰
 	}
 	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
-		noteadd "<TD colspan=2 bgcolor=#000000>&nbsp;</TD><!-- 黒 "+key+"-->";無
+		noteadd "<TD colspan=2 bgcolor=#000000>&nbsp;</TD>";<!-- 黒 "+key+"-->";無
 	} 
 	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
-		noteadd "<TD colspan=2 bgcolor=#742226>&nbsp;</TD><!-- 黒 "+key+"-->";赤
+		noteadd "<TD colspan=2 bgcolor=#742226>&nbsp;</TD>";<!-- 黒 "+key+"-->";赤
 	}
 	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
-		noteadd "<TD colspan=2 bgcolor=#742226>&nbsp;</TD><!-- 黒 "+key+"-->";赤
+		noteadd "<TD colspan=2 bgcolor=#742226>&nbsp;</TD>";<!-- 黒 "+key+"-->";赤
 	}
 	return
 	stop
 *hakken12
 	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
-		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD><!-- "+key+" -->";灰
+		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD>";<!-- "+key+" -->";灰
 	}
 	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
-		noteadd "<TD colspan=2 class=\"hakken1\">&nbsp;</TD><!-- "+key+" -->";無
+		noteadd "<TD colspan=2 class=\"hakken1\">&nbsp;</TD>";<!-- "+key+" -->";無
 	}
 	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
-		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
 	}
 	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
-		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
 	}
 	return
 	stop
 
 *hakken13
 	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
-		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD><!-- "+key+" -->";灰
+		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD>";<!-- "+key+" -->";灰
 	}
 	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
-		noteadd "<TD colspan=3 class=\"hakken1\">&nbsp;</TD><!-- "+key+" -->";無
+		noteadd "<TD colspan=3 class=\"hakken1\">&nbsp;</TD>";<!-- "+key+" -->";無
 	}
 	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
-		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
 	}
 	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
-		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
 	}
 	return
 	stop
 *hakken24
 	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
-		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>&nbsp;</TD><!-- "+key+" -->";灰
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>&nbsp;</TD>";<!-- "+key+" -->";灰
 	}
 	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
-		noteadd "<TD colspan=4 class=\"hakken2\">&nbsp;</TD><!-- "+key+" -->";無
+		noteadd "<TD colspan=4 class=\"hakken2\">&nbsp;</TD>";<!-- "+key+" -->";無
 	}
 	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
-		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
 	}
 	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
-		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
 	}	
 	return
 	stop
 *hakken25
 	;Cの印がついた鍵盤
 	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
-		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>・</TD><!-- "+key+" -->";灰
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>・</TD>";<!-- "+key+" -->";灰
 	}
 	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
-		noteadd "<TD colspan=4 class=\"hakken2\">・</TD><!-- "+key+" -->";無
+		noteadd "<TD colspan=4 class=\"hakken2\">・</TD>";<!-- "+key+" -->";無
 	}
 	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
-		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD>";<!-- "+key+" -->";赤
 	}
 	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
-		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD><!-- "+key+" -->";赤
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD>";<!-- "+key+" -->";赤
 	}	
 	return
 	stop
