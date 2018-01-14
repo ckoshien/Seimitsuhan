@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.644"
-#define	build		"(build20130707)"
+#define	ver			"0.645"
+#define	build		"(build20141116)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
 #define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
 
@@ -56,7 +56,7 @@
 ;	loop
 ;	mes encbuf
 #module
-#const EXPAND_SIZE 1024
+#const EXPAND_SIZE 2048
 // 文字列の初期値を設定する
 #deffunc set_string str str_to_set
     string_length = strlen(str_to_set)
