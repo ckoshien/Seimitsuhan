@@ -1,0 +1,506 @@
+#include "hspda.as"
+
+;表示設定
+	filename=""
+	screen 0,640,240
+	color 200,200,255
+	boxf 0,0,640,240
+	pos 10,13
+	color 0,0,0
+	font "",12
+	title "DAM精密採点結果出力ツール「精密はん」v0.50(build20060825)"
+
+	mes "精密はん設定ファイル"
+	pos 150,10
+	input filename(0),300,20,0;オブジェクトid=0
+	objsize 24,24
+	pos 460,9
+	button goto "...",*open_ini;オブジェクトid=1
+	objsize 90,24
+	pos 490,9
+	button goto "入力データ設定",*ini_edit;オブジェクトid=2
+
+	pos 10,40
+	mes "出力ファイル"
+	pos 150,40
+	input filename(1),300,20,0;オブジェクトid=3
+	objsize 24,24
+	pos 460,39
+	button goto "...",*file_save;オブジェクトid=4
+	objsize 90,24
+	pos 490,39
+	combox ki,20,"HTML形式\nテキスト形式\n";オブジェクトid=5
+	objsize 100,24
+	pos 490,60
+	combox sor,20,"日付順(新→旧)\n日付順(旧→新)\n得点順\nリクエストNo.順\n曲名順\nアーティスト順\nビブラート長順\nしゃくり回数順\n音程順\nリズム順\n抑揚順";オブジェクトid=6
+	objsize 60,60
+	pos 460,160
+	button goto "処理開始",*start;id=7
+	stop
+
+;==========================================================
+*open_ini
+	dialog "ini",16,"設定ファイルを開く"
+	if stat=1 : filename(0)=refstr
+	if stat!=1 : stop
+	exist refstr
+	alloc buf,strsize
+	notesel buf
+	if stat=1 : noteload refstr
+	if stat!=1 : stop
+
+;入力データファイル名取得
+	for i,0,notemax,1
+		noteget datafile(i),i;データファイル名の取得
+	next
+	objprm 0,filename(0)
+	m=notemax;読み込むファイルの数
+	stop
+
+;=======================================
+*file_save
+	if ki==0:kin="html"
+	if ki==1:kin="txt" 
+	dialog kin,17,"保存先の選択"
+	if stat=1 : filename(1)=refstr
+	if stat!=1 : stop
+	objprm 3,filename(1)
+	stop
+;=======================================
+*ini_edit
+	dialog "まだ実装していません。",0,""
+	stop
+
+;=====================================
+*start
+	if strlen(filename(1))<=4:dialog "出力ファイルを設定してください",1,"":goto *file_save
+	;ファイルを開く
+		id=0:cha=0:chb=0:x=0:a=0:bg=0:fl=0
+		sdim tim1,100,1000
+		sdim tim2,100,1000
+		sdim tim3,100,1000
+		sdim tim4,100,1000
+		sdim tim5,100,1000
+		sdim tim6,100,1000
+		sdim no1,100,1000
+		sdim no2,100,1000
+		sdim art,100,1000
+		sdim son,100,1000
+		ddim vib,1000
+		sdim vibt,100,1000
+		sdim sha,100,1000
+		sdim mel,100,1000
+		sdim rhy,100,1000
+		sdim yok,100,1000
+		dim dum1,1000
+		dim dum2,1000
+		dim dum3,1000
+		dim dum4,1000
+		dim dum5,1000
+		dim dum6,1000
+		dim n,id;n(cha)=元のインデックス
+
+
+		for i,0,m,1
+			exist datafile(i)
+			alloc buf,strsize
+			notesel buf
+			noteload datafile(i)
+			gosub *dataload
+		next
+		goto *sort
+		stop
+;===========================================================================
+*dataload
+;曲情報の処理
+	alloc con,5000000
+	for a,0,notemax,1
+		noteget con,a
+		if instr(con,0,"精密採点実施日")!=-1 {
+			bg=a
+			_break
+		}
+	next
+	x=0
+	for a,bg,notemax,1;書式の整理(内容のない行を切り捨て)
+		noteget con,a
+		if (instr(con,0,"<")!=-1)|(instr(con,0,"秒")!=-1)|(instr(con,0,"&")!=-1) {
+			data(x)=con
+			x=x+1;内容がある行だけ抽出して代入
+		}
+		if instr(con,0,"PageViewer")!=-1:_break
+	next
+	alloc buff,5000000
+	notesel buff
+	for a,0,x,1
+		noteadd data(a),a,1
+	next
+	notesave "##buffer"
+	alloc buff,5000000
+	notesel buff
+	noteload "##buffer"
+	x=0
+	do  
+				noteget con,x;実施日取得
+				if instr(con,0,"精密採点実施日")>=0 {
+					y=instr(con,0,"精密採点実施日")
+					tim1(id)=strmid(con,y+16,4);年
+					tim2(id)=strmid(con,y+21,2);月
+					tim3(id)=strmid(con,y+24,2);日
+					tim4(id)=strmid(con,y+27,2);時
+					tim5(id)=strmid(con,y+30,2);分
+					tim6(id)=strmid(con,y+33,2);秒
+					noteget con,x+4;アーティスト名取得
+					z=strmid(con,17,200):y=instr(z,0,"</td>"):art(id)=strmid(z,0,y)
+					noteget con,x+8;曲名取得
+					z=strmid(con,74,300):y=instr(z,0,"</a>"):son(id)=strmid(z,0,y)
+					noteget con,x+12;リクエストNo.取得
+					no1(id)=strmid(con,17,4)
+					no2(id)=strmid(con,22,2)
+					noteget con,x+16;得点取得
+					z=strmid(con,53,200):y=instr(z,0,"点"):poi(id)=int(strmid(z,0,y))
+					noteget con,x+22;ビブ長取得
+					z=strmid(con,4,300):y=instr(z,0,"秒"):vib(id)=double(strmid(z,0,y))
+					noteget con,x+26;ビブタイプ取得
+					z=strmid(con,154,300):y=instr(z,0,"</a>"):vibt(id)=strmid(z,0,y)
+					noteget con,x+32;しゃくり回数取得
+					z=strmid(con,53,300):y=instr(z,0,"回"):sha(id)=strmid(z,0,y)
+					noteget con,x+34;音程取得
+					z=strmid(con,53,300):y=instr(z,0,"%"):mel(id)=strmid(z,0,y)
+					noteget con,x+38;リズム取得
+					z=strmid(con,57,300):y=instr(z,0,".gif"):rhy(id)=strmid(z,0,y)
+					noteget con,x+40;抑揚取得
+					z=strmid(con,58,300):y=instr(z,0,".gif"):yok(id)=strmid(z,0,y)
+					if id!=0:gosub *check
+					if fl=0:id=id+1
+				}
+				title ""+(i+1)+"ファイル目:"+x+"/"+notemax+":"+id+"曲検出"
+				x=x+1
+			until x>=notemax
+			return
+	stop
+;============================================================================
+*check
+	fl=0
+	for cha,0,id,1
+			if (tim1(cha)==tim1(id))&(tim2(cha)==tim2(id))&(tim3(cha)==tim3(id))&(tim4(cha)==tim4(id))&(tim5(cha)==tim5(id))&(tim6(cha)==tim6(id)) {
+				fl=1:_break
+			}
+	next
+	return
+;===========================================================================================
+*sort
+	for cha,0,id,1
+		n(cha)=cha
+	next
+;==========================================================================
+if sor==0 {
+	;日付順(新→旧)にソート
+	for chb,0,id,1
+		dum1(chb)=int(tim1(chb))
+		dum2(chb)=int(tim2(chb))
+		dum3(chb)=int(tim3(chb))
+		dum4(chb)=int(tim4(chb))
+		dum5(chb)=int(tim5(chb))
+	next
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if dum1(n(cha))>dum1(n(chb)) {
+				gosub *sub_sort
+			}
+			if dum1(n(cha))==dum1(n(chb)) {
+				if dum2(n(cha))>dum2(n(chb)) {
+					gosub *sub_sort
+				}
+				if dum2(n(cha))==dum2(n(chb)) {
+					if dum3(n(cha))>dum3(n(chb)) {
+						gosub *sub_sort
+					}
+					if dum3(n(cha))==dum3(n(chb)) {
+						if dum4(n(cha))>dum4(n(chb)) {
+							gosub *sub_sort
+						}
+						if dum4(n(cha))==dum4(n(chb)) {
+							if dum5(n(cha))>dum5(n(chb)) {
+								gosub *sub_sort
+							}
+						}
+					}
+				}
+			}
+		next
+	next
+}
+;==========================================================================
+if sor==1 {
+	;日付順(旧→新)にソート
+	for chb,0,id,1
+		dum1(chb)=int(tim1(chb))
+		dum2(chb)=int(tim2(chb))
+		dum3(chb)=int(tim3(chb))
+		dum4(chb)=int(tim4(chb))
+		dum5(chb)=int(tim5(chb))
+	next
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if dum1(n(cha))<dum1(n(chb)) {
+				gosub *sub_sort
+			}
+			if dum1(n(cha))==dum1(n(chb)) {
+				if dum2(n(cha))<dum2(n(chb)) {
+					gosub *sub_sort
+				}
+				if dum2(n(cha))==dum2(n(chb)) {
+					if dum3(n(cha))<dum3(n(chb)) {
+						gosub *sub_sort
+					}
+					if dum3(n(cha))==dum3(n(chb)) {
+						if dum4(n(cha))<dum4(n(chb)) {
+							gosub *sub_sort
+						}
+						if dum4(n(cha))==dum4(n(chb)) {
+							if dum5(n(cha))<dum5(n(chb)) {
+								gosub *sub_sort
+							}
+						}
+					}
+				}
+			}
+		next
+	next
+}
+;==========================================================================
+;得点順にソート
+if sor==2 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if poi(n(cha))>poi(n(chb)) {
+				gosub *sub_sort
+			}
+		next
+	next
+}
+;==========================================================================
+;リクエストNo.順にソート
+if sor==3 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if int(no1(n(cha)))<int(no1(n(chb))) {
+				gosub *sub_sort
+			}
+			if int(no1(n(cha)))==int(no1(n(chb))) {
+				if int(no2(n(cha)))<int(no2(n(chb))) {
+					gosub *sub_sort
+				}
+			}
+		next
+	next
+}
+;==========================================================================
+;曲名/アーティスト順にソート
+	sdim dum6,500,id
+if (sor==4)|(sor==5) {
+	for chb,0,id,1
+		if sor==4:dum6(chb)=son(chb)
+		if sor==5:dum6(chb)=art(chb)
+	next
+	sortstr dum6,0
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		sortget n3,cha
+		n(cha)=n3
+	next
+;同じ曲名を得点順にソート
+	if sor==4 {
+		for cha,0,id,1
+			for chb,0,id,1
+				if son(n(cha))==son(n(chb)) {
+					if poi(n(cha))>poi(n(chb)) {
+						gosub *sub_sort
+					}
+				}
+			next
+		next
+	}
+;同じアーティストをリクエストNo.順にソート
+	if sor==5 {
+		for cha,0,id,1
+			for chb,0,id,1
+				if art(n(cha))==art(n(chb)) {
+					if int(no1(n(cha)))<int(no1(n(chb))) {
+						gosub *sub_sort
+					}
+					if int(no1(n(cha)))==int(no1(n(chb))) {
+						if int(no2(n(cha)))<int(no2(n(chb))) {
+							gosub *sub_sort
+						}
+					}
+				}
+			next
+		next
+	}
+}
+;==========================================================================
+;ビブ長順にソート
+if sor==6 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if vib(n(cha))>vib(n(chb)) {
+				gosub *sub_sort
+			}
+		next
+	next
+}
+;==========================================================================
+;しゃくり回数順にソート
+if sor==7 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if int(sha(n(cha)))>int(sha(n(chb))) {
+				gosub *sub_sort
+			}
+		next
+	next
+}
+;==========================================================================
+;音程順にソート
+if sor==8 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if int(mel(n(cha)))>int(mel(n(chb))) {
+				gosub *sub_sort
+			}
+		next
+	next
+}
+;==========================================================================
+;リズム順にソート
+if sor==9 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if int(rhy(n(cha)))<int(rhy(n(chb))) {
+				gosub *sub_sort
+			}
+		next
+	next
+}
+;==========================================================================
+;抑揚順にソート
+if sor==10 {
+	for cha,0,id,1
+		title "ソート中:"+(cha+1)+"/"+id+""
+		for chb,0,id,1
+			if int(yok(n(cha)))>int(yok(n(chb))) {
+				gosub *sub_sort
+			}
+		next
+	next
+}
+;==========================================================================
+;	for i,0,id,1
+;		dialog ""+(i+1)+"曲目\n"+tim1(i)+"/"+tim2(i)+"/"+tim3(i)+" "+tim4(i)+":"+tim5(i)+":"+tim6(i)+"\nリクエストNo."+no1(i)+"-"+no2(i)+"\n"+art(i)+"\n"+son(i)+"\n"+poi(i)+"点\nビブラート:"+vibt(i)+":"+strf("%2.1f",vib(i))+"秒\nしゃくり"+sha(i)+"回\n音程"+mel(i)+"%\nリズム"+rhy(i)+"\n抑揚"+yok(i)+"",0,""
+;	next
+	if ki==0:goto *htmlsave
+	if ki==1:goto *txtsave
+	stop
+;==============================================================================================
+*sub_sort
+		t=n(cha)
+		n(cha)=n(chb)
+		n(chb)=t
+		return
+		stop
+;==========================================================
+*htmlsave
+	sdim rhyt,100,id
+	alloc buff,5000000
+	notesel buff
+	noteadd "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\""
+	noteadd "\"http://www.w3.org/TR/html4/loose.dtd\">"
+	noteadd "<html>"
+	noteadd "<head>"
+	noteadd "<meta http-equiv=\"Content-Type\""
+	noteadd "content=\"text/html; charset=x-sjis\">"
+	noteadd "<meta http-equiv=\"Content-Style-Type\" content=\"text/css\">"
+	noteadd "<link href=\"seimitu.css\" rel=\"stylesheet\" type=\"text/css\">"
+	noteadd 	"<title>精密採点結果</title>\n</head>"
+	noteadd "<body>"
+	noteadd "<hr>"
+	noteadd "<table width=\"700\">"
+	noteadd "<tr>"
+	if sor==2:noteadd "<th class=\"left\">得点▼</th>"
+	if sor!=2:noteadd "<th class=\"left\">得点</th>"
+	if sor==4:noteadd "<th colspan=\"2\">曲名▲/アーティスト</th>"
+	if sor==5:noteadd "<th colspan=\"2\">曲名/アーティスト▲</th>"
+	if (sor!=4)&(sor!=5):noteadd "<th colspan=\"2\">曲名/アーティスト</th>"
+	if sor==6:noteadd "<th>ビブラート▼</th>"
+	if sor!=6:noteadd "<th>ビブラート</th>"
+	if sor==7:noteadd "<th>しゃくり▼</th>"
+	if sor!=7:noteadd "<th>しゃくり</th>"
+	if sor==8:noteadd "<th>音程▼</th>"
+	if sor!=8:noteadd "<th>音程</th>"
+	if sor==9:noteadd "<th>リズム▲</th>"
+	if sor!=9:noteadd "<th>リズム</th>"
+	if sor==10:noteadd "<th>抑揚▼</th>"
+	if sor!=10:noteadd "<th>抑揚</th>"
+	if sor==0:noteadd "<th class=\"right\">精密採点実施日▼</th>"
+	if sor==1:noteadd "<th class=\"right\">精密採点実施日▲</th>"
+	if (sor!=1)&(sor!=0):noteadd "<th class=\"right\">精密採点実施日</th>"
+	noteadd	"</tr>"
+	sdim st,100,100
+	for i,0,id,1
+		noteadd	"<tr>"
+		st(0)="MS5"
+		if poi(n(i))>=95:st(0)="MS0"
+		if (poi(n(i))>=90)&(poi(n(i))<95):st(0)="MS1"
+		if (poi(n(i))>=85)&(poi(n(i))<90):st(0)="MS2"
+		if (poi(n(i))>=80)&(poi(n(i))<85):st(0)="MS3"
+		if (poi(n(i))>=75)&(poi(n(i))<80):st(0)="MS4"
+		noteadd "<td rowspan=\"2\" class="+st(0)+">"+poi(n(i))+"<span class=\"ten\">点</span></td>"
+		noteadd "<td class=\"no\">No."+(i+1)+"</td>"
+		noteadd "<td class=\"song\">"+son(n(i))+"</td>"
+		noteadd "<td>"+vibt(n(i))+"</td>"
+		noteadd	"<td rowspan=\"2\" class=\"sha\">"+sha(n(i))+"回</td>"
+		noteadd "<td rowspan=\"2\" class=\"sha\">"+mel(n(i))+"%</td>"
+		if int(rhy(n(i)))==-4:rhyt(n(i))="-4"
+		if int(rhy(n(i)))==-3:rhyt(n(i))="-3"
+		if int(rhy(n(i)))==-2:rhyt(n(i))="-2"
+		if int(rhy(n(i)))==-1:rhyt(n(i))="-1"
+		if int(rhy(n(i)))==0: rhyt(n(i))="±0"
+		if int(rhy(n(i)))==1:rhyt(n(i))="+1"
+		if int(rhy(n(i)))==2:rhyt(n(i))="+2"
+		if int(rhy(n(i)))==3:rhyt(n(i))="+3"
+		if int(rhy(n(i)))==4:rhyt(n(i))="+4"
+		noteadd "<td rowspan=\"2\" class=\"sha\">"+rhyt(n(i))+"</td>"
+		st(1)="R5"
+		if int(yok(n(i)))==10:st(1)="R1"
+		if int(yok(n(i)))==9:st(1)="R2"
+		if int(yok(n(i)))==8:st(1)="R3"
+		if (int(yok(n(i)))<=7)&(int(yok(n(i)))>=5):st(1)="R4"
+		noteadd "<td rowspan=\"2\" class="+st(1)+">"+int(yok(n(i)))+"</td>"
+		noteadd "<td rowspan=\"2\" class=\"sha\">"+tim1(n(i))+"/"+tim2(n(i))+"/"+tim3(n(i))+" "+tim4(n(i))+":"+tim5(n(i))+":"+tim6(n(i))+"</td>"
+		noteadd "</tr>"
+		noteadd	"<tr>"
+		noteadd "<td class=\"id\">"+no1(n(i))+"-"+no2(n(i))+"</td>"
+		noteadd "<td class=\"singer\">"+art(n(i))+"</td>"
+		noteadd	"<td class=\"vib\">"+strf("%2.1f",vib(n(i)))+"秒</td>"
+		noteadd "</tr>"
+	next
+	noteadd "</table>"
+	noteadd "<hr><br><br><br>"
+	noteadd "</body>"
+	noteadd "</html>"
+ 	notesave filename(1)
+ 	dialog "ファイルを"+filename(1)+"に保存しました。",0,"終了" 
+	stop
+;==============================================================
+*txtsave
+	stop
