@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.63"
-#define	build		"(build20120905)"
+#define	ver			"0.641"
+#define	build		"(build20120918)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
 #define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
 
@@ -170,6 +170,7 @@
 		dim dum5,1000
 		dim dum6,1000
 		dim n,id;n(cha)=元のインデックス
+		ddim max_point,1000
 
 	;精密採点DX用変数
 	if mode==2 {
@@ -191,7 +192,7 @@
 			exist datafile(mo)
 			alloc buf,strsize
 			notesel buf
-			noteload datafile(mo)
+			if strsize!=-1:noteload datafile(mo)
 			if mode==0:gosub *dataload;精密採点(プラス)
 			if mode==1:gosub *dataload2;精密採点Ⅱ
 			if mode==2:gosub *dataload3;精密採点DX
@@ -416,6 +417,7 @@
 			i = instr(cont,mainpointer,">") ;
 			pointer = mainpointer + i + 1 ;i の1文字先がデータの先頭
 			poi(id) = double(strmid(cont,pointer,6));得点データ取得
+			max_point(id) = poi(id)
 			mainpointer = pointer ;メインポインタを進める
 
 			if id!=0:gosub *check
@@ -669,6 +671,7 @@
 			i = instr(cont,mainpointer,"rank=") ;
 			pointer = mainpointer + i + 9 ;i の6文字前がデータの先頭
 			poi(id) = double(strmid(cont,pointer,6));得点データ取得
+			max_point(id) = poi(id)
 			mainpointer = pointer ;メインポインタを進める
 
 
@@ -869,6 +872,7 @@
 			pointer = mainpointer + i + 1 ;i の1文字先がデータの先頭
 			len = instr(cont,pointer,"</marking") ;データは</markingまで
 			poi(id) = double(strmid(cont,pointer,len));得点データ取得
+			max_point(id) = poi(id)
 			mainpointer = pointer ;メインポインタを進める
 
 
@@ -892,9 +896,19 @@
 	return
 ;===========================================================================================
 *sort
+;	for cha,0,id,1
+;		n(cha)=cha
+;	next
+	
 	for cha,0,id,1
 		n(cha)=cha
+		for chb,0,id,1
+			if (no1(cha)==no1(chb))&(no2(cha)==no2(chb)) {;リクエストNo.が一致したとき
+				if max_point(cha)<poi(chb):max_point(cha)=poi(chb)
+			}
+		next
 	next
+
 ;==========================================================================
 if sor==0 {
 	;日付順(新→旧)にソート
@@ -1213,7 +1227,7 @@ if sor==16 {
 		else {
 		noteadd "<br><br>更新時刻:"+gettime(0)+"/"+gettime(1)+"/"+gettime(3)+"　"+gettime(4)+":"+gettime(5)+""
 	}
-	noteadd "<table width=\"900\">"
+	noteadd "<table width=\"1000\">"
 	noteadd "<tr>"
 	if mode!=2 {
 		if sor==2:noteadd "<th class=\"left\">得点▼</th>"
@@ -1223,6 +1237,7 @@ if sor==16 {
 		if sor==2:noteadd "<th class=\"left\">得点▼<br><br>(全国平均点)</th>"
 		if sor!=2:noteadd "<th class=\"left\">得点<br><br>(全国平均点)</th>"
 	}
+	noteadd "<th>過去最高点</th>"
 	if sor==4:noteadd "<th colspan=\"2\">曲名▲/アーティスト</th>"
 	if sor==5:noteadd "<th colspan=\"2\">曲名/アーティスト▲</th>"
 	if (sor!=4)&(sor!=5):noteadd "<th colspan=\"2\">曲名/アーティスト</th>"
@@ -1272,6 +1287,7 @@ if sor==16 {
 		if (poi(n(i))>=75)&(poi(n(i))<80):st(0)="MS4"
 		if (mode==0|mode==1) :noteadd "<td rowspan=\"2\" class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
 		if mode==2:noteadd "<td  class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
+		noteadd "<td rowspan=\"2\" class=\"id\">"+strf("%2.3f",max_point(n(i)))+"</td>"
 		noteadd "<td class=\"no\">No."+(i+1)+"</td>"
 		noteadd "<td class=\"song\">"+son(n(i))+"</td>"
 		noteadd "<td>"+vibt(n(i))+"</td>"
