@@ -1,8 +1,61 @@
 #include "hspda.as"
 
-#define	ver			"0.61"
-#define	build		"(build20101127)"
-#define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんⅡ v"+ver+"<\/a><br>"
+#define	ver			"0.62"
+#define	build		"(build20120904)"
+#define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
+#define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
+
+;UTF-8 URLエンコードモジュール
+#module "encodemod"
+#const global CODEPAGE_S_JIS            932 ; Shift-JIS
+#const global CODEPAGE_EUC_JP         51932 ; EUC-JP
+#const global CODEPAGE_JIS            50220 ; iso-2022-jp
+#const global CODEPAGE_UTF_7          65000 ; utf-7
+#const global CODEPAGE_UTF_8          65001 ; utf-8
+#const global CODEPAGE_UNICODE         1200 ; Unicode
+#const global CODEPAGE_UNICODE_BE      1201 ; Unicode(Big-Endian)
+#const global CODEPAGE_AUTODET_ALL    50001 ; auto detect all
+#const global CODEPAGE_AUTODET        50932 ; auto detect
+
+#usecom IMultiLanguage@encodemod "{275c23e1-3747-11d0-9fea-00aa003f8646}" \
+                                 "{275c23e2-3747-11d0-9fea-00aa003f8646}"
+#comfunc MuLang_ConvertString  9 var, int, int, var, var, var, var
+#deffunc encode_init
+	newcom pMLang, IMultiLanguage
+	return
+
+#defcfunc encode var v1, int p1, var v2, int p2, local sSize, local dSize, local pdwMode
+	pdwMode = 0
+	sSize   = -1
+	dSize   = 0
+	sdim v2
+	MuLang_ConvertString pMLang, pdwMode, p1, p2, v1, sSize, v2, dSize
+	sdim v2, dSize
+	MuLang_ConvertString pMLang, pdwMode, p1, p2, v1, sSize, v2, dSize
+	return dSize
+
+#deffunc encode_term
+	delcom pMLang
+	pMLang = 0
+	return
+#global
+
+#define ctype range(%1, %2, %3) (%1 > %2 & %1 < %3)
+
+;	encode_init
+;	pStr = ""
+;
+;	sdim encbuf
+;	repeat encode(pStr, CODEPAGE_S_JIS, dStr, CODEPAGE_UTF_8)
+;		tmp = peek(dStr, cnt)
+;		if range(tmp, 0x29, 0x3a) | range(tmp, 0x40, 0x5b) | range(tmp, 0x60, 0x7b) {
+;			encbuf += strf("%c", tmp)
+;		} else {
+;			encbuf += strf("%%%02x", tmp)
+;		}
+;	loop
+;	mes encbuf
+
 
 
 
@@ -14,7 +67,7 @@
 	pos 10,13
 	color 0,0,0
 	font "",12
-	titl="DAM精密採点(プラス)・Ⅱ集計結果出力ツール「精密はんⅡ」"+ver+build
+	titl="DAM精密採点(プラス)/Ⅱ/DX集計結果出力ツール「精密はんII」"+ver+build
 	title titl
 
 	mes "精密はん設定ファイル"
@@ -44,7 +97,7 @@
 	mes "集計モード"
 	objsize 100,24
 	pos 460,130
-	combox mode,20,"精密採点(プラス)\n精密採点Ⅱ\n";オブジェクトid=7
+	combox mode,20,"精密採点(プラス)\n精密採点Ⅱ\n精密採点DX\n";オブジェクトid=7
 	objsize 60,60
 	pos 460,160
 	button goto "処理開始",*start;id=8
@@ -118,6 +171,19 @@
 		dim dum6,1000
 		dim n,id;n(cha)=元のインデックス
 
+	;精密採点DX用変数
+		sdim chstab,100,1000;チャート安定性
+		sdim chexpress,100,1000;チャート表現力
+		sdim chvib,100,1000;チャートビブラート
+		sdim chrhy,100,1000;チャートリズム
+		sdim hightess,100,1000;highTessitura
+		sdim lowtess,100,1000;lowTessitura
+		ddim avgtotal,1000	;全国平均点
+		sdim avgpitch,100,1000;全国平均音程
+		sdim avgstab,100,1000;全国平均安定性
+		sdim avgexpress,100,1000;全国平均表現力
+		sdim avgvib,100,1000;全国平均ビブラート
+		sdim avgrhy,100,1000;全国平均リズム
 
 		for mo,0,m,1
 			exist datafile(mo)
@@ -126,6 +192,7 @@
 			noteload datafile(mo)
 			if mode==0:gosub *dataload;精密採点(プラス)
 			if mode==1:gosub *dataload2;精密採点Ⅱ
+			if mode==2:gosub *dataload3;精密採点DX
 		next
 		goto *sort
 		stop
@@ -259,6 +326,101 @@
 				if fl=0:id=id+1
 				title ""+(i+1)+"ファイル目:"+"/"+notemax+":"+id+"曲検出"
 		loop
+	;XML解析スタート
+	mainpointer = 0 
+	repeat
+			i = instr(cont,mainpointer,"<marking") ; 
+			if i = -1 : break ;無かったら抜ける 
+
+			i = instr(cont,mainpointer,"requestNo=") ;
+			pointer = mainpointer + i + 11 ;i の11文字先がデータの先頭
+			no1(id) = strmid(cont,pointer,4) ;リクエストNo.取得
+			no2(id) = strmid(cont,pointer+5,2);
+
+			i = instr(cont,mainpointer,"contents=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			son(id) = strmid(cont,pointer,len) ;曲名データ取得
+
+			i = instr(cont,mainpointer,"artist=") ;
+			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			art(id) = strmid(cont,pointer,len) ;アーティストデータ取得
+
+			i = instr(cont,mainpointer,"date=") ;
+			pointer = mainpointer + i + 6 ;i の6文字先がデータの先頭
+			tim1(id)=strmid(cont,pointer,4);年
+			tim2(id)=strmid(cont,pointer+5,2);月
+			tim3(id)=strmid(cont,pointer+8,2);日
+			tim4(id)=strmid(cont,pointer+11,2);時
+			tim5(id)=strmid(cont,pointer+14,2);分
+			tim6(id)=strmid(cont,pointer+17,2);秒
+
+			i = instr(cont,mainpointer,"vibrato=") ;
+			pointer = mainpointer + i + 9 ;i の9文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vib(id) = double(strmid(cont,pointer,len));ビブ長データ取得
+
+			i = instr(cont,mainpointer,"vibratoType=") ;
+			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vibt(id) = strmid(cont,pointer,len);ビブタイプデータ取得
+			if vibt(id)=="1":vibt(id)="A-1"
+			if vibt(id)=="2":vibt(id)="A-2"
+			if vibt(id)=="3":vibt(id)="A-3"
+			if vibt(id)=="4":vibt(id)="B-1"
+			if vibt(id)=="5":vibt(id)="B-2"
+			if vibt(id)=="6":vibt(id)="B-3"
+			if vibt(id)=="7":vibt(id)="C-1"
+			if vibt(id)=="8":vibt(id)="C-2"
+			if vibt(id)=="9":vibt(id)="C-3"
+
+			i = instr(cont,mainpointer,"sob=") ;
+			pointer = mainpointer + i + 5 ;i の5文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			sha(id) = strmid(cont,pointer,len);しゃくりデータ取得
+
+			i = instr(cont,mainpointer,"pitch=") ;
+			pointer = mainpointer + i + 7 ;i の5文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			mel(id) = strmid(cont,pointer,len);音程データ取得
+
+			i = instr(cont,mainpointer,"rhythm=") ;
+			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			rhy(id) = strmid(cont,pointer,len);リズムの上手さデータ取得
+
+			i = instr(cont,mainpointer,"modulation=") ;
+			pointer = mainpointer + i + 12 ;i の12文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			yok(id) = strmid(cont,pointer,len);抑揚の上手さデータ取得
+
+			i = instr(cont,mainpointer,"highPitch=") ;
+			pointer = mainpointer + i + 11 ;i の11文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			melh(id) = strmid(cont,pointer,len);高音の上手さデータ取得
+
+			i = instr(cont,mainpointer,"lowPitch=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			mell(id) = strmid(cont,pointer,len);低音の上手さデータ取得
+
+			i = instr(cont,mainpointer,"measure=") ;
+			pointer = mainpointer + i + 9 ;i の9文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			kob(id) = strmid(cont,pointer,len);こぶしデータ取得
+			mainpointer = pointer ;メインポインタを進める
+
+			i = instr(cont,mainpointer,">") ;
+			pointer = mainpointer + i + 1 ;i の1文字先がデータの先頭
+			poi(id) = double(strmid(cont,pointer,6));得点データ取得
+			mainpointer = pointer ;メインポインタを進める
+
+			if id!=0:gosub *check
+			if fl=0:id=id+1
+			title "XML:"+(mo+1)+"ファイル目:"+mainpointer+":"+id+"曲検出"+cnt
+	loop
+		
 		return
 	stop
 ;=dataload end===================================================================
@@ -399,10 +561,324 @@
 
 			if id!=0:gosub *check
 			if fl=0:id=id+1
-			title ""+(i+1)+"ファイル目:"+"/"+notemax+":"+id+"曲検出"
-			loop
-			return
+			title ""+(mo+1)+"ファイル目:"+"/"+notemax+":"+id+"曲検出"
+
+	loop
+
+	;XML解析スタート
+	mainpointer = 0 
+	repeat
+			i = instr(cont,mainpointer,"<marking") ; 
+			if i = -1 : break ;無かったら抜ける 
+
+			i = instr(cont,mainpointer,"requestNo=") ;
+			pointer = mainpointer + i + 11 ;i の11文字先がデータの先頭
+			no1(id) = strmid(cont,pointer,4) ;リクエストNo.取得
+			no2(id) = strmid(cont,pointer+5,2);
+
+			i = instr(cont,mainpointer,"contents=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			son(id) = strmid(cont,pointer,len) ;曲名データ取得
+
+			i = instr(cont,mainpointer,"artist=") ;
+			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			art(id) = strmid(cont,pointer,len) ;アーティストデータ取得
+
+			i = instr(cont,mainpointer,"date=") ;
+			pointer = mainpointer + i + 6 ;i の6文字先がデータの先頭
+			tim1(id)=strmid(cont,pointer,4);年
+			tim2(id)=strmid(cont,pointer+5,2);月
+			tim3(id)=strmid(cont,pointer+8,2);日
+			tim4(id)=strmid(cont,pointer+11,2);時
+			tim5(id)=strmid(cont,pointer+14,2);分
+			tim6(id)=strmid(cont,pointer+17,2);秒
+
+			i = instr(cont,mainpointer,"vibrato=") ;
+			pointer = mainpointer + i + 9 ;i の9文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vib(id) = double(strmid(cont,pointer,len));ビブ長データ取得
+
+			i = instr(cont,mainpointer,"vibratoType=") ;
+			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vibt(id) = strmid(cont,pointer,len);ビブタイプデータ取得
+			if vibt(id)=="1":vibt(id)="A-1"
+			if vibt(id)=="2":vibt(id)="A-2"
+			if vibt(id)=="3":vibt(id)="A-3"
+			if vibt(id)=="4":vibt(id)="B-1"
+			if vibt(id)=="5":vibt(id)="B-2"
+			if vibt(id)=="6":vibt(id)="B-3"
+			if vibt(id)=="7":vibt(id)="C-1"
+			if vibt(id)=="8":vibt(id)="C-2"
+			if vibt(id)=="9":vibt(id)="C-3"
+
+			i = instr(cont,mainpointer,"vibratoRank=") ;
+			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vibi(id) = strmid(cont,pointer,len);ビブラートの上手さデータ取得
+
+			i = instr(cont,mainpointer,"sob=") ;
+			pointer = mainpointer + i + 5 ;i の5文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			sha(id) = strmid(cont,pointer,len);しゃくりデータ取得
+
+			i = instr(cont,mainpointer,"pitch=") ;
+			pointer = mainpointer + i + 7 ;i の5文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			mel(id) = strmid(cont,pointer,len);音程データ取得
+
+			i = instr(cont,mainpointer,"rhythm=") ;
+			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			rhy(id) = strmid(cont,pointer,len);リズムの上手さデータ取得
+
+			i = instr(cont,mainpointer,"modulation=") ;
+			pointer = mainpointer + i + 12 ;i の12文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			yok(id) = strmid(cont,pointer,len);抑揚の上手さデータ取得
+
+			i = instr(cont,mainpointer,"highPitch=") ;
+			pointer = mainpointer + i + 11 ;i の11文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			melh(id) = strmid(cont,pointer,len);高音の上手さデータ取得
+
+			i = instr(cont,mainpointer,"lowPitch=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			mell(id) = strmid(cont,pointer,len);低音の上手さデータ取得
+
+			i = instr(cont,mainpointer,"measure=") ;
+			pointer = mainpointer + i + 9 ;i の9文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			kob(id) = strmid(cont,pointer,len);こぶしデータ取得
+
+			i = instr(cont,mainpointer,"fall=") ;
+			pointer = mainpointer + i + 6 ;i の6文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			fal(id) = strmid(cont,pointer,len);フォールデータ取得
+
+			i = instr(cont,mainpointer,"longTone=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			lont(id) = strmid(cont,pointer,len);ロングトーンデータ取得
+
+			i = instr(cont,mainpointer,"rank=") ;
+			pointer = mainpointer + i + 9 ;i の6文字前がデータの先頭
+			poi(id) = double(strmid(cont,pointer,6));得点データ取得
+			mainpointer = pointer ;メインポインタを進める
+
+
+			if id!=0:gosub *check
+			if fl=0:id=id+1
+			title "XML:"+(mo+1)+"ファイル目:"+mainpointer+":"+id+"曲検出"+cnt
+	loop
+
+	return
 	stop
+;=====dataload2 end=======================================================
+*dataload3
+
+	;曲情報の処理(精密採点DX)
+	sdim cont,1000000
+	bload datafile(mo),cont ;入力htmlファイル 
+	sdim output,1000000 
+	notesel output 
+
+	sdim requestno,7 
+	dim i 
+	dim len 
+	dim mainpointer 
+	dim pointer
+	dim fileinfo,24
+	sdim s,256 
+	sdim ln,1024 
+
+		;XML解析スタート
+	mainpointer = 0 
+	repeat
+			i = instr(cont,mainpointer,"<marking") ; 
+			if i = -1 : break ;無かったら抜ける 
+
+			i = instr(cont,mainpointer,"requestNo=") ;
+			pointer = mainpointer + i + 11 ;i の11文字先がデータの先頭
+			no1(id) = strmid(cont,pointer,4) ;リクエストNo.取得
+			no2(id) = strmid(cont,pointer+5,2);
+
+			i = instr(cont,mainpointer,"artist=") ;
+			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			art(id) = strmid(cont,pointer,len) ;アーティストデータ取得
+
+			i = instr(cont,mainpointer,"contents=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			son(id) = strmid(cont,pointer,len) ;曲名データ取得
+
+			i = instr(cont,mainpointer,"chartInterval=") ;
+			pointer = mainpointer + i + 15 ;i の15文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			mel(id) = strmid(cont,pointer,len) ;チャート音程取得
+
+			i = instr(cont,mainpointer,"chartStability=") ;
+			pointer = mainpointer + i + 16 ;i の17文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			chstab(id) = strmid(cont,pointer,len) ;チャート安定性取得
+
+			i = instr(cont,mainpointer,"chartExpressiveness=") ;
+			pointer = mainpointer + i + 21 ;i の21文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			chexpress(id) = strmid(cont,pointer,len) ;チャート表現力取得
+
+			i = instr(cont,mainpointer,"chartVibrateLongtone=") ;
+			pointer = mainpointer + i + 22 ;i の22文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			chvib(id) = strmid(cont,pointer,len) ;チャートビブラート取得
+
+			i = instr(cont,mainpointer,"chartRhythm=") ;
+			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			chrhy(id) = strmid(cont,pointer,len) ;チャートリズム取得
+
+			i = instr(cont,mainpointer,"highPitch=") ;
+			pointer = mainpointer + i + 11 ;i の11文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			melh(id) = strmid(cont,pointer,len);highPitchデータ取得
+
+			i = instr(cont,mainpointer,"lowPitch=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			mell(id) = strmid(cont,pointer,len);lowPitchデータ取得
+
+			i = instr(cont,mainpointer,"highTessitura=") ;
+			pointer = mainpointer + i + 15 ;i の15文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			hightess(id) = strmid(cont,pointer,len);highTessituraデータ取得
+
+			i = instr(cont,mainpointer,"lowTessitura=") ;
+			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			lowtess(id) = strmid(cont,pointer,len);lowTessituraデータ取得
+
+			i = instr(cont,mainpointer,"modulation=") ;
+			pointer = mainpointer + i + 12 ;i の12文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			yok(id) = strmid(cont,pointer,len);抑揚の上手さデータ取得
+
+			i = instr(cont,mainpointer,"measure=") ;
+			pointer = mainpointer + i + 9 ;i の9文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			kob(id) = strmid(cont,pointer,len);こぶしデータ取得
+
+			i = instr(cont,mainpointer,"sob=") ;
+			pointer = mainpointer + i + 5 ;i の5文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			sha(id) = strmid(cont,pointer,len);しゃくりデータ取得
+
+			i = instr(cont,mainpointer,"fall=") ;
+			pointer = mainpointer + i + 6 ;i の6文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			fal(id) = strmid(cont,pointer,len);フォールデータ取得
+
+			i = instr(cont,mainpointer,"timing=") ;
+			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			rhy(id) = strmid(cont,pointer,len);リズムの上手さデータ取得(5が±0)
+
+			i = instr(cont,mainpointer,"longTone=") ;
+			pointer = mainpointer + i + 10 ;i の10文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			lont(id) = strmid(cont,pointer,len);ロングトーンデータ取得
+
+			i = instr(cont,mainpointer,"vibrato=") ;精密採点IIとタグが同じだが内容が異なることに注意。
+			pointer = mainpointer + i + 9 ;i の9文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vibi(id) = strmid(cont,pointer,len);ビブラートの上手さデータ取得
+
+			i = instr(cont,mainpointer,"vibratoType=") ;
+			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vibt(id) = strmid(cont,pointer,len);ビブタイプデータ取得
+			if vibt(id)=="0":vibt(id)="N";(ノンビブ形)
+			if vibt(id)=="1":vibt(id)="A-1";(ボックス形)
+			if vibt(id)=="2":vibt(id)="B-1";(ボックス形)
+			if vibt(id)=="3":vibt(id)="C-1";(ボックス形)
+			if vibt(id)=="4":vibt(id)="A-2";(ボックス形)
+			if vibt(id)=="5":vibt(id)="B-2";(ボックス形)
+			if vibt(id)=="6":vibt(id)="C-2";(ボックス形)
+			if vibt(id)=="7":vibt(id)="A-3";(ボックス形)
+			if vibt(id)=="8":vibt(id)="B-3";(ボックス形)
+			if vibt(id)=="9":vibt(id)="C-3";(ボックス形)
+			if vibt(id)=="10":vibt(id)="D";(上昇形)
+			if vibt(id)=="11":vibt(id)="E";(下降形)
+			if vibt(id)=="12":vibt(id)="F";(縮小形)
+			if vibt(id)=="13":vibt(id)="G";(拡張形)
+			if vibt(id)=="14":vibt(id)="H";(ひし形)
+			if int(vibt(id))>14:vibt(id)="type15以降"
+
+
+			i = instr(cont,mainpointer,"vibratoSumSeconds=") ;
+			pointer = mainpointer + i + 19 ;i の19文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで
+			vib(id) = double(strmid(cont,pointer,len));ビブ長データ取得
+
+			i = instr(cont,mainpointer,"averageTotalPoint=") ;
+			pointer = mainpointer + i + 19 ;i の19文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			avgtotal(id) = double(strmid(cont,pointer,len))/1000 ;全国平均点取得
+
+			i = instr(cont,mainpointer,"averagePitch=") ;
+			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			avgpitch(id) = strmid(cont,pointer,len) ;全国平均音程取得
+
+			i = instr(cont,mainpointer,"averageStability=") ;
+			pointer = mainpointer + i + 18 ;i の18文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			avgstab(id) = strmid(cont,pointer,len) ;チャート安定性取得
+
+			i = instr(cont,mainpointer,"averageExpressiveness=") ;
+			pointer = mainpointer + i + 23 ;i の23文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			avgexpress(id) = strmid(cont,pointer,len) ;全国平均表現力取得
+
+			i = instr(cont,mainpointer,"averageVibrateLongtone=") ;
+			pointer = mainpointer + i + 24 ;i の24文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			avgvib(id) = strmid(cont,pointer,len) ;全国平均ビブラート取得
+
+			i = instr(cont,mainpointer,"averageRhythm=") ;
+			pointer = mainpointer + i + 15 ;i の15文字先がデータの先頭
+			len = instr(cont,pointer,"\"") ;データは"まで 
+			avgrhy(id) = strmid(cont,pointer,len) ;全国平均リズム取得
+
+			i = instr(cont,mainpointer,"date=") ;
+			pointer = mainpointer + i + 6 ;i の6文字先がデータの先頭
+			tim1(id)=strmid(cont,pointer,4);年
+			tim2(id)=strmid(cont,pointer+5,2);月
+			tim3(id)=strmid(cont,pointer+8,2);日
+			tim4(id)=strmid(cont,pointer+11,2);時
+			tim5(id)=strmid(cont,pointer+14,2);分
+			tim6(id)=strmid(cont,pointer+17,2);秒
+			mainpointer = pointer ;メインポインタを進める
+
+			i = instr(cont,mainpointer,">") ;
+			pointer = mainpointer + i + 1 ;i の1文字先がデータの先頭
+			len = instr(cont,pointer,"</marking") ;データは</markingまで
+			poi(id) = double(strmid(cont,pointer,len));得点データ取得
+			mainpointer = pointer ;メインポインタを進める
+
+
+			if id!=0:gosub *check
+			if fl=0:id=id+1
+			title "XML:"+(mo+1)+"ファイル目:"+mainpointer+":"+id+"曲検出"+cnt
+	loop
+
+
+	return
+	stop
+
 ;============================================================================
 *check
 	fl=0
@@ -726,12 +1202,25 @@ if sor==16 {
 	noteadd "<link href=\"seimitu.css\" rel=\"stylesheet\" type=\"text/css\">"
 	if mode==0:noteadd 	"<title>精密採点(プラス)結果</title>\n</head>"
 	if mode==1:noteadd 	"<title>精密採点Ⅱ結果</title>\n</head>"
+	if mode==2:noteadd 	"<title>精密採点DX結果</title>\n</head>"
 	noteadd "<body>"
 	noteadd "<hr>"
+	if gettime(5)<10 {
+		noteadd "<br><br>更新時刻:"+gettime(0)+"/"+gettime(1)+"/"+gettime(3)+"　"+gettime(4)+":"+0+gettime(5)+""
+		}
+		else {
+		noteadd "<br><br>更新時刻:"+gettime(0)+"/"+gettime(1)+"/"+gettime(3)+"　"+gettime(4)+":"+gettime(5)+""
+	}
 	noteadd "<table width=\"900\">"
 	noteadd "<tr>"
-	if sor==2:noteadd "<th class=\"left\">得点▼</th>"
-	if sor!=2:noteadd "<th class=\"left\">得点</th>"
+	if mode!=2 {
+		if sor==2:noteadd "<th class=\"left\">得点▼</th>"
+		if sor!=2:noteadd "<th class=\"left\">得点</th>"
+	}
+	if mode==2 {
+		if sor==2:noteadd "<th class=\"left\">得点▼<br><br>(全国平均点)</th>"
+		if sor!=2:noteadd "<th class=\"left\">得点<br><br>(全国平均点)</th>"
+	}
 	if sor==4:noteadd "<th colspan=\"2\">曲名▲/アーティスト</th>"
 	if sor==5:noteadd "<th colspan=\"2\">曲名/アーティスト▲</th>"
 	if (sor!=4)&(sor!=5):noteadd "<th colspan=\"2\">曲名/アーティスト</th>"
@@ -757,6 +1246,15 @@ if sor==16 {
 	if sor!=10:noteadd "<th>抑揚</th>"
 	if sor==9:noteadd "<th>リズム▲</th>"
 	if sor!=9:noteadd "<th>リズム</th>"
+	if mode==2 {
+		noteadd "<th>音程</th>"
+		noteadd "<th>安定性</th>"
+		noteadd "<th>表現力</th>"
+		noteadd "<th>ビブラート</th>"
+		noteadd "<th>リズム</th>"
+		noteadd "<th>チャート</td>"
+
+	}
 	if sor==0:noteadd "<th class=\"right\">精密採点実施日▼</th>"
 	if sor==1:noteadd "<th class=\"right\">精密採点実施日▲</th>"
 	if (sor!=1)&(sor!=0):noteadd "<th class=\"right\">精密採点実施日</th>"
@@ -770,12 +1268,13 @@ if sor==16 {
 		if (poi(n(i))>=85)&(poi(n(i))<90):st(0)="MS2"
 		if (poi(n(i))>=80)&(poi(n(i))<85):st(0)="MS3"
 		if (poi(n(i))>=75)&(poi(n(i))<80):st(0)="MS4"
-		noteadd "<td rowspan=\"2\" class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
+		if (mode==0|mode==1) :noteadd "<td rowspan=\"2\" class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
+		if mode==2:noteadd "<td  class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
 		noteadd "<td class=\"no\">No."+(i+1)+"</td>"
 		noteadd "<td class=\"song\">"+son(n(i))+"</td>"
 		noteadd "<td>"+vibt(n(i))+"</td>"
 		noteadd	"<td rowspan=\"2\" class=\"sha\">"+sha(n(i))+"回</td>"
-		if mode==1 {
+		if (mode==1|mode==2) {
 			noteadd	"<td rowspan=\"2\" class=\"sha\">"+kob(n(i))+"回</td>"
 			noteadd	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"回</td>"
 		} else {
@@ -783,6 +1282,10 @@ if sor==16 {
 			noteadd	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"</td>"
 		}
 		noteadd "<td rowspan=\"2\" class=\"sha\">"+mel(n(i))+"%</td>"
+		if mode==0 {
+			noteadd "<td rowspan=\"2\" class=\"sha\"></td>"
+			noteadd "<td rowspan=\"2\" class=\"sha\"></td>"
+		}
 		if mode==1 {
 			if int(mell(n(i)))==1:noteadd "<td rowspan=\"2\" class=\"sha\">×</td>"
 			if int(mell(n(i)))==2:noteadd "<td rowspan=\"2\" class=\"sha\">△</td>"
@@ -792,13 +1295,14 @@ if sor==16 {
 			if int(melh(n(i)))==2:noteadd "<td rowspan=\"2\" class=\"sha\">△</td>"
 			if int(melh(n(i)))==3:noteadd "<td rowspan=\"2\" class=\"sha\">○</td>"
 			if int(melh(n(i)))==4:noteadd "<td rowspan=\"2\" class=\"sha\">◎</td>"
-		} else {
-			noteadd "<td rowspan=\"2\" class=\"sha\"></td>"
-			noteadd "<td rowspan=\"2\" class=\"sha\"></td>"
+		}
+		if mode==2 {
+			noteadd "<td class=\"sha\">"+mell(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+melh(n(i))+"</td>"
 		}
 		;ビブラートの上手さ
 		st(1)="R5"
-		if mode==1 {
+		if (mode==1|mode==2) {
 			if int(vibi(n(i)))==10:st(1)="R1"
 			if int(vibi(n(i)))==9:st(1)="R2"
 			if int(vibi(n(i)))==8:st(1)="R3"
@@ -807,7 +1311,7 @@ if sor==16 {
 		noteadd "<td rowspan=\"2\" class="+st(1)+">"+vibi(n(i))+"</td>"		
 		;ロングトーンの上手さ
 		st(1)="R5"
-		if mode==1 {
+		if (mode==1|mode==2) {
 			if int(lont(n(i)))==10:st(1)="R1"
 			if int(lont(n(i)))==9:st(1)="R2"
 			if int(lont(n(i)))==8:st(1)="R3"
@@ -821,22 +1325,68 @@ if sor==16 {
 		if int(yok(n(i)))==8:st(1)="R3"
 		if (int(yok(n(i)))<=7)&(int(yok(n(i)))>=5):st(1)="R4"
 		noteadd "<td rowspan=\"2\" class="+st(1)+">"+yok(n(i))+"</td>"
-		if int(rhy(n(i)))==-4:rhyt(n(i))="+4"
-		if int(rhy(n(i)))==-3:rhyt(n(i))="+3"
-		if int(rhy(n(i)))==-2:rhyt(n(i))="+2"
-		if int(rhy(n(i)))==-1:rhyt(n(i))="+1"
-		if int(rhy(n(i)))==0: rhyt(n(i))="±0"
-		if int(rhy(n(i)))==1:rhyt(n(i))="-1"
-		if int(rhy(n(i)))==2:rhyt(n(i))="-2"
-		if int(rhy(n(i)))==3:rhyt(n(i))="-3"
-		if int(rhy(n(i)))==4:rhyt(n(i))="-4"
-		noteadd "<td rowspan=\"2\" class=\"sha\">"+rhyt(n(i))+"</td>"
+		if (mode==0|mode==1) {
+			if int(rhy(n(i)))==-4:rhyt(n(i))="+4"
+			if int(rhy(n(i)))==-3:rhyt(n(i))="+3"
+			if int(rhy(n(i)))==-2:rhyt(n(i))="+2"
+			if int(rhy(n(i)))==-1:rhyt(n(i))="+1"
+			if int(rhy(n(i)))==0: rhyt(n(i))="±0"
+			if int(rhy(n(i)))==1:rhyt(n(i))="-1"
+			if int(rhy(n(i)))==2:rhyt(n(i))="-2"
+			if int(rhy(n(i)))==3:rhyt(n(i))="-3"
+			if int(rhy(n(i)))==4:rhyt(n(i))="-4"
+			noteadd "<td rowspan=\"2\" class=\"sha\">"+rhyt(n(i))+"</td>"
+		}
+		if mode==2 {
+			noteadd "<td rowspan=\"2\" class=\"sha\">"+rhy(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+mel(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+chstab(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+chexpress(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+chvib(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+chrhy(n(i))+"</td>"
+		}
+		if mode==2 {
+			string="http:\/\/chart.apis.google.com\/chart?cht=r&chxt=y,x&chls=4|4&chco=FF0000,00FF00&chxp=0,0,20,40,60,80,100&chd=t:"+avgpitch(n(i))
+			string = string + ","+ avgstab(n(i)) +"," + avgexpress(n(i)) + "," + avgvib(n(i)) + "," + avgrhy(n(i)) + "," + avgpitch(n(i))
+			string = string + "|" + mel(n(i)) + "," + chstab(n(i)) + "," + chexpress(n(i)) + "," + chvib(n(i)) + "," + chrhy(n(i)) + "," + mel(n(i))
+			string = string + "&chxl=1:|%e9%9f%b3%e7%a8%8b|%e5%ae%89%e5%ae%9a%e6%80%a7|%e8%a1%a8%e7%8f%be%e5%8a%9b|%e3%83%93%e3%83%96%e3%83%a9%e3%83%bc%e3%83%88|%e3%83%aa%e3%82%ba%e3%83%a0"
+			string = string + "&chm=s,FF0000,0,-1,12,0|s,FFFFFF,0,-1,8,0|o,00FF00,1,-1,12,0|o,FFFFFF,1,-1,8,0&chts=000000,13
+				encode_init
+				pStr = ""+art(n(i))+"／"+son(n(i))+"  ("+no1(n(i))+"-"+no2(n(i))+")"
+			
+				sdim encbuf
+				repeat encode(pStr, CODEPAGE_S_JIS, dStr, CODEPAGE_UTF_8)
+					tmp = peek(dStr, cnt)
+					if range(tmp, 0x29, 0x3a) | range(tmp, 0x40, 0x5b) | range(tmp, 0x60, 0x7b) {
+						encbuf += strf("%c", tmp)
+					} else {
+						encbuf += strf("%%%02x", tmp)
+					}
+				loop
+			;	mes encbuf
+
+			string = string + "&chtt=" + encbuf
+			string = string + "&chdl=%e5%85%a8%e5%9b%bd%e5%b9%b3%e5%9d%87|%e8%87%aa%e5%88%86&chs=350x260"
+			noteadd "<td rowspan=\"2\" class=\"sha\"><a href="+ string +" target=_blank>見る<\/a><\/td>"
+
+		}
 		noteadd "<td rowspan=\"2\" class=\"sha\">"+tim1(n(i))+"/"+tim2(n(i))+"/"+tim3(n(i))+" "+tim4(n(i))+":"+tim5(n(i))+":"+tim6(n(i))+"</td>"
 		noteadd "</tr>"
 		noteadd	"<tr>"
+		;全国平均点
+		if mode==2:noteadd "<td class=\"id\">("+strf("%2.3f",avgtotal(n(i)))+"点)</td>"
 		noteadd "<td class=\"id\">"+no1(n(i))+"-"+no2(n(i))+"</td>"
 		noteadd "<td class=\"singer\">"+art(n(i))+"</td>"
 		noteadd	"<td class=\"vib\">"+strf("%2.1f",vib(n(i)))+"秒</td>"
+		if mode==2 {
+			noteadd "<td class=\"sha\">"+lowtess(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+hightess(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+avgpitch(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+avgstab(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+avgexpress(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+avgvib(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+avgrhy(n(i))+"</td>"
+		}
 		noteadd "</tr>"
 	next
 	noteadd "</table><br>"
