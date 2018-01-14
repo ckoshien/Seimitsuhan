@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.62"
-#define	build		"(build20120904)"
+#define	ver			"0.63"
+#define	build		"(build20120905)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
 #define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
 
@@ -172,6 +172,7 @@
 		dim n,id;n(cha)=元のインデックス
 
 	;精密採点DX用変数
+	if mode==2 {
 		sdim chstab,100,1000;チャート安定性
 		sdim chexpress,100,1000;チャート表現力
 		sdim chvib,100,1000;チャートビブラート
@@ -184,6 +185,7 @@
 		sdim avgexpress,100,1000;全国平均表現力
 		sdim avgvib,100,1000;全国平均ビブラート
 		sdim avgrhy,100,1000;全国平均リズム
+	}
 
 		for mo,0,m,1
 			exist datafile(mo)
@@ -1273,15 +1275,26 @@ if sor==16 {
 		noteadd "<td class=\"no\">No."+(i+1)+"</td>"
 		noteadd "<td class=\"song\">"+son(n(i))+"</td>"
 		noteadd "<td>"+vibt(n(i))+"</td>"
-		noteadd	"<td rowspan=\"2\" class=\"sha\">"+sha(n(i))+"回</td>"
-		if (mode==1|mode==2) {
-			noteadd	"<td rowspan=\"2\" class=\"sha\">"+kob(n(i))+"回</td>"
-			noteadd	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"回</td>"
-		} else {
+		;しゃくり
+		if mode==2:noteadd	"<td class=\"sha\">"+sha(n(i))+"回</td>"
+		if mode!=2:noteadd	"<td rowspan=\"2\" class=\"sha\">"+sha(n(i))+"回</td>"
+		;こぶし・フォール
+		if mode==0 {
 			noteadd	"<td rowspan=\"2\" class=\"sha\">"+kob(n(i))+"</td>"
 			noteadd	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"</td>"
 		}
-		noteadd "<td rowspan=\"2\" class=\"sha\">"+mel(n(i))+"%</td>"
+		if mode==1 {
+			noteadd	"<td rowspan=\"2\" class=\"sha\">"+kob(n(i))+"回</td>"
+			noteadd	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"回</td>"
+		} 
+		if mode==2 {
+			noteadd	"<td class=\"sha\">"+kob(n(i))+"回</td>"
+			noteadd	"<td class=\"sha\">"+fal(n(i))+"回</td>"
+		} 
+		;音程
+		if mode!=2:noteadd "<td rowspan=\"2\" class=\"sha\">"+mel(n(i))+"%</td>"
+		if mode==2:noteadd "<td class=\"sha\">"+mel(n(i))+"%</td>"
+		;高音・低音
 		if mode==0 {
 			noteadd "<td rowspan=\"2\" class=\"sha\"></td>"
 			noteadd "<td rowspan=\"2\" class=\"sha\"></td>"
@@ -1297,8 +1310,7 @@ if sor==16 {
 			if int(melh(n(i)))==4:noteadd "<td rowspan=\"2\" class=\"sha\">◎</td>"
 		}
 		if mode==2 {
-			noteadd "<td class=\"sha\">"+mell(n(i))+"</td>"
-			noteadd "<td class=\"sha\">"+melh(n(i))+"</td>"
+			noteadd "<td colspan=\"2\"class=\"sha\">"+ mell(n(i)) + "-" + melh(n(i)) + "<br>(" + lowtess(n(i)) + "-" +hightess(n(i))+ ")</td>"
 		}
 		;ビブラートの上手さ
 		st(1)="R5"
@@ -1308,7 +1320,9 @@ if sor==16 {
 			if int(vibi(n(i)))==8:st(1)="R3"
 			if (int(vibi(n(i)))<=7)&(int(vibi(n(i)))>=5):st(1)="R4"
 		}
-		noteadd "<td rowspan=\"2\" class="+st(1)+">"+vibi(n(i))+"</td>"		
+		if mode!=2:noteadd "<td rowspan=\"2\" class="+st(1)+">"+vibi(n(i))+"</td>"
+		if mode==2:noteadd "<td class="+st(1)+">"+vibi(n(i))+"</td>"		
+
 		;ロングトーンの上手さ
 		st(1)="R5"
 		if (mode==1|mode==2) {
@@ -1317,14 +1331,19 @@ if sor==16 {
 			if int(lont(n(i)))==8:st(1)="R3"
 			if (int(lont(n(i)))<=7)&(int(lont(n(i)))>=5):st(1)="R4"
 		}
-		noteadd "<td rowspan=\"2\" class="+st(1)+">"+lont(n(i))+"</td>"
+		if mode!=2:noteadd "<td rowspan=\"2\" class="+st(1)+">"+lont(n(i))+"</td>"
+		if mode==2:noteadd "<td class="+st(1)+">"+lont(n(i))+"</td>"
+
 		;抑揚
 		st(1)="R5"
 		if int(yok(n(i)))==10:st(1)="R1"
 		if int(yok(n(i)))==9:st(1)="R2"
 		if int(yok(n(i)))==8:st(1)="R3"
 		if (int(yok(n(i)))<=7)&(int(yok(n(i)))>=5):st(1)="R4"
-		noteadd "<td rowspan=\"2\" class="+st(1)+">"+yok(n(i))+"</td>"
+		if mode!=2:noteadd "<td rowspan=\"2\" class="+st(1)+">"+yok(n(i))+"</td>"
+		if mode==2:noteadd "<td class="+st(1)+">"+yok(n(i))+"</td>"
+
+		;リズム
 		if (mode==0|mode==1) {
 			if int(rhy(n(i)))==-4:rhyt(n(i))="+4"
 			if int(rhy(n(i)))==-3:rhyt(n(i))="+3"
@@ -1337,8 +1356,9 @@ if sor==16 {
 			if int(rhy(n(i)))==4:rhyt(n(i))="-4"
 			noteadd "<td rowspan=\"2\" class=\"sha\">"+rhyt(n(i))+"</td>"
 		}
+		;チャート
 		if mode==2 {
-			noteadd "<td rowspan=\"2\" class=\"sha\">"+rhy(n(i))+"</td>"
+			noteadd "<td class=\"sha\">"+rhy(n(i))+"</td>"
 			noteadd "<td class=\"sha\">"+mel(n(i))+"</td>"
 			noteadd "<td class=\"sha\">"+chstab(n(i))+"</td>"
 			noteadd "<td class=\"sha\">"+chexpress(n(i))+"</td>"
@@ -1379,8 +1399,55 @@ if sor==16 {
 		noteadd "<td class=\"singer\">"+art(n(i))+"</td>"
 		noteadd	"<td class=\"vib\">"+strf("%2.1f",vib(n(i)))+"秒</td>"
 		if mode==2 {
-			noteadd "<td class=\"sha\">"+lowtess(n(i))+"</td>"
-			noteadd "<td class=\"sha\">"+hightess(n(i))+"</td>"
+			;声域(鍵盤表示)
+			noteadd "<td colspan=10 class=sha>"
+			noteadd "<TABLE style=\"border:2px solid #000000; border-collapse:collapse;\">"
+			noteadd "<tr>"
+			key=41:gosub *hakken13
+			key=42:gosub *kokken
+			key=43:gosub *hakken12
+			key=44:gosub *kokken
+			key=45:gosub *hakken12
+			key=46:gosub *kokken
+			key=47:gosub *hakken13
+	
+			for cha,0,3,1
+				key=cha*12+48:gosub *hakken13
+				key=cha*12+49:gosub *kokken		
+				key=cha*12+50:gosub *hakken12				
+				key=cha*12+51:gosub *kokken
+				key=cha*12+52:gosub *hakken13
+				key=cha*12+53:gosub *hakken13
+				key=cha*12+54:gosub *kokken
+				key=cha*12+55:gosub *hakken12
+				key=cha*12+56:gosub *kokken
+				key=cha*12+57:gosub *hakken12
+				key=cha*12+58:gosub *kokken
+				key=cha*12+59:gosub *hakken13
+				noteadd "\n"
+			next
+			noteadd "</tr>\n<tr>"
+			key=41:gosub *hakken24
+			key=43:gosub *hakken24
+			key=45:gosub *hakken24
+			key=47:gosub *hakken24
+
+			for cha,0,3,1
+				key=cha*12+48:gosub *hakken25
+				key=cha*12+50:gosub *hakken24
+				key=cha*12+52:gosub *hakken24
+				key=cha*12+53:gosub *hakken24
+				key=cha*12+55:gosub *hakken24
+				key=cha*12+57:gosub *hakken24
+				key=cha*12+59:gosub *hakken24
+				noteadd "\n"
+
+			next
+			noteadd "</tr>"
+			noteadd "</table>"
+			noteadd "</td>"
+		
+			;チャートパラメータ
 			noteadd "<td class=\"sha\">"+avgpitch(n(i))+"</td>"
 			noteadd "<td class=\"sha\">"+avgstab(n(i))+"</td>"
 			noteadd "<td class=\"sha\">"+avgexpress(n(i))+"</td>"
@@ -1398,4 +1465,86 @@ if sor==16 {
 	stop
 ;==============================================================
 *txtsave
+	stop
+;======================
+;灰 key<mell(n(i))またはkey>melh(n(i))
+;無 key>=lowtess(n(i))かつkey<=hightess(n(i))
+;赤 key>mell(n(i))かつkey<lowtess(n(i))、または、key<=melh(n(i))かつkey>hightess(n(i))
+
+*kokken
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		noteadd "<TD colspan=2 bgcolor=#717075>&nbsp;</TD><!-- 黒 "+key+"-->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		noteadd "<TD colspan=2 bgcolor=#000000>&nbsp;</TD><!-- 黒 "+key+"-->";無
+	} 
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		noteadd "<TD colspan=2 bgcolor=#742226>&nbsp;</TD><!-- 黒 "+key+"-->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		noteadd "<TD colspan=2 bgcolor=#742226>&nbsp;</TD><!-- 黒 "+key+"-->";赤
+	}
+	return
+	stop
+*hakken12
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD><!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		noteadd "<TD colspan=2 class=\"hakken1\">&nbsp;</TD><!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		noteadd "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+	}
+	return
+	stop
+
+*hakken13
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD><!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		noteadd "<TD colspan=3 class=\"hakken1\">&nbsp;</TD><!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		noteadd "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+	}
+	return
+	stop
+*hakken24
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>&nbsp;</TD><!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		noteadd "<TD colspan=4 class=\"hakken2\">&nbsp;</TD><!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD><!-- "+key+" -->";赤
+	}	
+	return
+	stop
+*hakken25
+	;Cの印がついた鍵盤
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>・</TD><!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		noteadd "<TD colspan=4 class=\"hakken2\">・</TD><!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD><!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD><!-- "+key+" -->";赤
+	}	
+	return
 	stop
