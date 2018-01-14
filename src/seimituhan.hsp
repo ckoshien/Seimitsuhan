@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.60"
-#define	build		"(build20090313)"
+#define	ver			"0.61"
+#define	build		"(build20101127)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんⅡ v"+ver+"<\/a><br>"
 
 
@@ -148,107 +148,118 @@
 
 	;HTML解析スタート
 	mainpointer = 0
-	repeat 
-			i = instr(cont,mainpointer,"実施日：") ;日付データの前に必ずある文字列を検索 
-			if i = -1 : break ;無かったら抜ける 
-			pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭 
-			tim1(id)=strmid(cont,pointer,4);年
-			tim2(id)=strmid(cont,pointer+5,2);月
-			tim3(id)=strmid(cont,pointer+8,2);日
-			tim4(id)=strmid(cont,pointer+11,2);時
-			tim5(id)=strmid(cont,pointer+14,2);分
-			tim6(id)=strmid(cont,pointer+17,2);秒
+	i = instr(cont,mainpointer,"<title>DAM★とも"):
+	if i != -1:filetype = 0
+	if i == -1:filetype = 1
+		repeat 
+				i = instr(cont,mainpointer,"実施日：") ;日付データの前に必ずある文字列を検索 
+				if i = -1 : break ;無かったら抜ける 
+				pointer = mainpointer + i + 8 ;i の8文字先がデータの先頭 
+				tim1(id)=strmid(cont,pointer,4);年
+				tim2(id)=strmid(cont,pointer+5,2);月
+				tim3(id)=strmid(cont,pointer+8,2);日
+				tim4(id)=strmid(cont,pointer+11,2);時
+				tim5(id)=strmid(cont,pointer+14,2);分
+				tim6(id)=strmid(cont,pointer+17,2);秒
 
-			i = instr(cont,mainpointer,"class=\"song");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 92 ;データの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで 
-			son(id) = strmid(cont,pointer,len) ;曲名データ取得
+				i = instr(cont,mainpointer,"class=\"song");データの前に必ずある文字列を検索 
+				if filetype== 0:pointer = mainpointer + i + 92 ;データの先頭 
+				if filetype== 1:pointer = mainpointer + i + 88 ;データの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで 
+				son(id) = strmid(cont,pointer,len) ;曲名データ取得
 
-			i = instr(cont,mainpointer,"</a>(");得点データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 5 ;i の5文字先がデータの先頭 
-			no1(id) = strmid(cont,pointer,4) ;リクエストNo.取得
-			no2(id) = strmid(cont,pointer+5,2) ;
+				i = instr(cont,mainpointer,"</a>(");得点データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 5 ;i の5文字先がデータの先頭 
+				no1(id) = strmid(cont,pointer,4) ;リクエストNo.取得
+				no2(id) = strmid(cont,pointer+5,2) ;
 
-			i = instr(cont,mainpointer,"class=\"artist") 
-			pointer = mainpointer + i + 15 ;i の15文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで 
-			art(id) = strmid(cont,pointer,len) ;アーティストデータ取得
+				i = instr(cont,mainpointer,"class=\"artist") 
+				pointer = mainpointer + i + 15 ;i の15文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで 
+				art(id) = strmid(cont,pointer,len) ;アーティストデータ取得
 
-			i = instr(cont,mainpointer,"あなたの点数:");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 21 ;i の21文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで 
-			poi(id) = double(strmid(cont,pointer,len));得点データ取得
+				i = instr(cont,mainpointer,"あなたの点数:");データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 21 ;i の21文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで 
+				poi(id) = double(strmid(cont,pointer,len));得点データ取得
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭
+				if filetype == 1:pointer = mainpointer + i + 27 ;i の25文字先がデータの先頭 
+				len = instr(cont,pointer,"秒") ;データは"秒"まで 				
+				vib(id) = double(strmid(cont,pointer,len));ビブ長データ取得
+	
+				i = instr(cont,mainpointer,"あなたのビブラートのタイプは");データの前に必ずある文字列を検索 
+				if filetype == 0:pointer = mainpointer + i + 124 ;i の124文字先がデータの先頭
+				if filetype == 1:pointer = mainpointer + i + 101 ;i の101文字先がデータの先頭
+				if filetype == 0:len = instr(cont,pointer,"\n") ;データは改行まで	
+				if filetype == 1:len = instr(cont,pointer,"<") ;データは<まで
+				vibt(id) = strmid(cont,pointer,len);ビブタイプデータ取得
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"秒") ;データは"秒"まで 
-			vib(id) = double(strmid(cont,pointer,len));ビブ長データ取得
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				if filetype == 1:pointer = mainpointer + i + 18 ;i の18文字先がデータの先頭 
+				len = instr(cont,pointer,"回") ;データは"回"まで 
+				sha(id) = strmid(cont,pointer,len);しゃくりデータ取得
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				if filetype == 1:pointer = mainpointer + i + 18 ;i の18文字先がデータの先頭 
+				len = instr(cont,pointer,"%") ;データは"%"まで 
+				mel(id) = strmid(cont,pointer,len);音程データ取得
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
-			i = instr(cont,mainpointer,"');\">");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
-			len = instr(cont,pointer,"\n") ;データは改行まで 
-			vibt(id) = strmid(cont,pointer,len);ビブタイプデータ取得
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				if filetype == 0:pointer = mainpointer + i + 57 ;i の57文字先がデータの先頭 
+				if filetype == 1:pointer = mainpointer + i + 56 ;i の56文字先がデータの先頭 
+				len = instr(cont,pointer,".gif") ;データは".gif"まで 
+				rhy(id) = strmid(cont,pointer,len);リズムの上手さデータ取得
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"回") ;データは"秒"まで 
-			sha(id) = strmid(cont,pointer,len);しゃくりデータ取得
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"%") ;データは"%"まで 
-			mel(id) = strmid(cont,pointer,len);音程データ取得
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 57 ;i の57文字先がデータの先頭 
-			len = instr(cont,pointer,".gif") ;データは".gif"まで 
-			rhy(id) = strmid(cont,pointer,len);リズムの上手さデータ取得
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 61 ;i の61文字先がデータの先頭 
-			len = instr(cont,pointer,".gif") ;データは".gif"まで 
-			yok(id) = strmid(cont,pointer,len);抑揚の上手さデータ取得
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで
-			;こぶし
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで
-			;高音域
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで
-			;中音域
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで
-			;低音域
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"<") ;データは"<"まで
-			;?
-			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
-
-			if id!=0:gosub *check
-			if fl=0:id=id+1
-			title ""+(i+1)+"ファイル目:"+"/"+notemax+":"+id+"曲検出"
-			loop
-			return
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				if filetype == 0:pointer = mainpointer + i + 61 ;i の61文字先がデータの先頭 
+				if filetype == 1:pointer = mainpointer + i + 60 ;i の60文字先がデータの先頭 
+				len = instr(cont,pointer,".gif") ;データは".gif"まで 
+				yok(id) = strmid(cont,pointer,len);抑揚の上手さデータ取得
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで
+				;こぶし
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで
+				;高音域
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで
+				;中音域
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで
+				;低音域
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
+				pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+				len = instr(cont,pointer,"<") ;データは"<"まで
+				;?
+				mainpointer = pointer ;class="field" が続くのでメインポインタを進める
+	
+				if id!=0:gosub *check
+				if fl=0:id=id+1
+				title ""+(i+1)+"ファイル目:"+"/"+notemax+":"+id+"曲検出"
+		loop
+		return
 	stop
 ;=dataload end===================================================================
 *dataload2
@@ -269,6 +280,9 @@
 
 	;HTML解析スタート
 	mainpointer = 0 
+	i = instr(cont,mainpointer,"<title>DAM★とも"):
+	if i != -1:filetype = 0 // <title>DAM★とも が存在
+	if i == -1:filetype = 1 // <title>精密採点2 が存在
 	repeat 
 			i = instr(cont,mainpointer,"実施日：") ;日付データの前に必ずある文字列を検索 
 			if i = -1 : break ;無かったら抜ける 
@@ -281,7 +295,8 @@
 			tim6(id)=strmid(cont,pointer+17,2);秒
 
 			i = instr(cont,mainpointer,"class=\"song");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 92 ;データの先頭 
+			if filetype == 0:pointer = mainpointer + i + 92 ;データの先頭 
+			if filetype == 1:pointer = mainpointer + i + 89 ;データの先頭 
 			len = instr(cont,pointer,"<") ;データは"<"まで 
 			son(id) = strmid(cont,pointer,len) ;曲名データ取得
 
@@ -305,48 +320,55 @@
 			len = instr(cont,pointer,"秒") ;データは"秒"まで 
 			vib(id) = double(strmid(cont,pointer,len));ビブ長データ取得
 
-			i = instr(cont,mainpointer,"');\">");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 13 ;i の13文字先がデータの先頭
-			len = instr(cont,pointer,"\n") ;データは改行まで 
+			i = instr(cont,mainpointer,"あなたのビブラートのタイプは");データの前に必ずある文字列を検索 
+			if filetype == 0:pointer = mainpointer + i + 123 ;i の123文字先がデータの先頭
+			if filetype == 1:pointer = mainpointer + i + 101 ;i の101文字先がデータの先頭
+			len = instr(cont,pointer,"<") ;データは<まで 
 			vibt(id) = strmid(cont,pointer,len);ビブタイプデータ取得
 ;			if vib(id)==0.000:vibt(id)="無し"
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
 			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"回") ;データは"秒"まで 
+			if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+			if filetype == 1:pointer = mainpointer + i + 19 ;i の19文字先がデータの先頭 
+			len = instr(cont,pointer,"回") ;データは"回"まで 
 			sha(id) = strmid(cont,pointer,len);しゃくりデータ取得
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
 
 			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"回") ;データは"秒"まで 
+			if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+			if filetype == 1:pointer = mainpointer + i + 19 ;i の19文字先がデータの先頭 
+			len = instr(cont,pointer,"回") ;データは"回"まで 
 			kob(id) = strmid(cont,pointer,len);こぶしデータ取得
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
 
 			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
-			len = instr(cont,pointer,"回") ;データは"秒"まで 
+			if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+			if filetype == 1:pointer = mainpointer + i + 19 ;i の19文字先がデータの先頭 
+			len = instr(cont,pointer,"回") ;データは"回"まで 
 			fal(id) = strmid(cont,pointer,len);フォールデータ取得
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
 
 			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+			if filetype == 0:pointer = mainpointer + i + 14 ;i の14文字先がデータの先頭 
+			if filetype == 1:pointer = mainpointer + i + 19 ;i の19文字先がデータの先頭 
 			len = instr(cont,pointer,"%") ;データは"秒"まで 
 			mel(id) = strmid(cont,pointer,len);音程データ取得
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
 			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 68 ;i の68文字先がデータの先頭 
+			if filetype == 0:pointer = mainpointer + i + 68 ;i の68文字先がデータの先頭 
+			if filetype == 1:pointer = mainpointer + i + 76 ;i の72文字先がデータの先頭 
 			len = instr(cont,pointer,".gif") ;データは".gif"まで 
 			mell(id) = strmid(cont,pointer,len);低音の上手さデータ取得
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
 
 			i = instr(cont,mainpointer,"class=\"field");データの前に必ずある文字列を検索 
-			pointer = mainpointer + i + 68 ;i の68文字先がデータの先頭 
+			if filetype == 0:pointer = mainpointer + i + 68 ;i の68文字先がデータの先頭 
+			if filetype == 1:pointer = mainpointer + i + 76 ;i の68文字先がデータの先頭 
 			len = instr(cont,pointer,".gif") ;データは".gif"まで 
 			melh(id) = strmid(cont,pointer,len);高音の上手さデータ取得
 			mainpointer = pointer ;class="field" が続くのでメインポインタを進める
