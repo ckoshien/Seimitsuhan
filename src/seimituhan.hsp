@@ -1,7 +1,7 @@
 #include "hspda.as"
 
-#define	ver			"0.642"
-#define	build		"(build20130522)"
+#define	ver			"0.643"
+#define	build		"(build20130625)"
 #define	seimituhan	"<a href=\"http:\/\/hp.ckoshien.client.jp\/contents\/ranbat.html\">精密はんII v"+ver+"<\/a><br>"
 #define	DAM			"<a href=\"http:\/\/www.clubdam.com\/app\/damStation\/clubdamRanking.do?requestNo="
 
@@ -55,7 +55,36 @@
 ;		}
 ;	loop
 ;	mes encbuf
+#module
+#const EXPAND_SIZE 1024
+// 文字列の初期値を設定する
+#deffunc set_string str str_to_set
+    string_length = strlen(str_to_set)
+    string_size = 64            // 測定のために公平化
+    sdim string, string_size
+    poke string, 0, str_to_set
+    return
 
+// 文字列を返す
+#deffunc get_string var target
+    target = string
+    return
+
+// 文字列の長さを返す
+#defcfunc get_string_length
+    return string_length
+
+// 文字列を連結する
+#deffunc add_string str str_to_add
+    len = strlen(str_to_add)
+    if string_size <= string_length + len {
+        string_size += EXPAND_SIZE
+        memexpand string, string_size
+    }
+    poke string, string_length, str_to_add
+    string_length += len
+    return
+#global
 
 
 
@@ -140,6 +169,8 @@
 *start
 	if strlen(filename(1))<=4:dialog "出力ファイルを設定してください",1,"":goto *file_save
 	;ファイルを開く
+		ddim time,6
+		time(0)=double(double(gettime(7))/1000+gettime(0)*365*30*3600*24+gettime(1)*30*3600*24+gettime(3)*3600*24+gettime(4)*3600+gettime(5)*60+gettime(6))
 		id=0:cha=0:chb=0:x=0:a=0:bg=0:fl=0
 		sdim tim1,100,1000
 		sdim tim2,100,1000
@@ -187,7 +218,7 @@
 		sdim avgvib,100,1000;全国平均ビブラート
 		sdim avgrhy,100,1000;全国平均リズム
 	}
-
+		time(2)=double(double(gettime(7))/1000+gettime(0)*365*30*3600*24+gettime(1)*30*3600*24+gettime(3)*3600*24+gettime(4)*3600+gettime(5)*60+gettime(6))
 		for mo,0,m,1
 			exist datafile(mo)
 			alloc buf,strsize
@@ -197,6 +228,7 @@
 			if mode==1:gosub *dataload2;精密採点Ⅱ
 			if mode==2:gosub *dataload3;精密採点DX
 		next
+		time(3)=double(double(gettime(7))/1000+gettime(0)*365*30*3600*24+gettime(1)*30*3600*24+gettime(3)*3600*24+gettime(4)*3600+gettime(5)*60+gettime(6))
 		goto *sort
 		stop
 ;===========================================================================
@@ -1205,8 +1237,10 @@ if sor==16 {
 		stop
 ;==========================================================
 *htmlsave
+	time(4)=double(double(gettime(7))/1000+gettime(0)*365*30*3600*24+gettime(1)*30*3600*24+gettime(3)*3600*24+gettime(4)*3600+gettime(5)*60+gettime(6))
 	sdim rhyt,100,id
-	alloc buff,5000000
+	alloc buff,100000
+#if 0
 	notesel buff
 	noteadd "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\""
 	noteadd "\"http://www.w3.org/TR/html4/loose.dtd\">"
@@ -1278,6 +1312,7 @@ if sor==16 {
 	noteadd	"</tr>"
 	sdim st,100,100
 	for i,0,id,1
+		title "HTML出力中:"+(i+1)+"/"+id
 		noteadd	"<tr>"
 		st(0)="MS5"
 		if poi(n(i))>=95:st(0)="MS0"
@@ -1477,7 +1512,281 @@ if sor==16 {
 	noteadd "<br><hr>"
 	noteadd"</body></html>"
  	notesave filename(1)
- 	dialog "ファイルを"+filename(1)+"に保存しました。",0,"終了" 
+#else
+;v0.643以降note系命令廃止
+	set_string ""
+	add_string "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n"
+	add_string "\"http://www.w3.org/TR/html4/loose.dtd\">\n"
+	add_string "<html>\n"
+	add_string "<head>\n"
+	add_string "<meta http-equiv=\"Content-Type\"\n"
+	add_string "content=\"text/html; charset=x-sjis\">\n"
+	add_string "<meta http-equiv=\"Content-Style-Type\" content=\"text/css\">\n"
+	add_string "<link href=\"seimitu.css\" rel=\"stylesheet\" type=\"text/css\">\n"
+	if mode==0:add_string 	"<title>精密採点(プラス)結果</title>\n</head>\n"
+	if mode==1:add_string 	"<title>精密採点Ⅱ結果</title>\n</head>\n"
+	if mode==2:add_string 	"<title>精密採点DX結果</title>\n</head>\n"
+	add_string "<body>\n"
+	add_string "<hr>\n"
+	if gettime(5)<10 {
+		add_string "<br><br>更新時刻:"+gettime(0)+"/"+gettime(1)+"/"+gettime(3)+"　"+gettime(4)+":"+0+gettime(5)+"\n"
+		}
+		else {
+		add_string "<br><br>更新時刻:"+gettime(0)+"/"+gettime(1)+"/"+gettime(3)+"　"+gettime(4)+":"+gettime(5)+"\n"
+	}
+		add_string "<table width=\"1000\">"
+	add_string "<tr>"
+	if mode!=2 {
+		if sor==2:add_string "<th class=\"left\">得点▼</th>"
+		if sor!=2:add_string "<th class=\"left\">得点</th>"
+	}
+	if mode==2 {
+		if sor==2:add_string "<th class=\"left\">得点▼<br><br>(全国平均点)</th>"
+		if sor!=2:add_string "<th class=\"left\">得点<br><br>(全国平均点)</th>"
+	}
+	add_string "<th>過去最高点</th>"
+	if sor==4:add_string "<th colspan=\"2\">曲名▲/アーティスト</th>"
+	if sor==5:add_string "<th colspan=\"2\">曲名/アーティスト▲</th>"
+	if (sor!=4)&(sor!=5):add_string "<th colspan=\"2\">曲名/アーティスト</th>"
+	if sor==6:add_string "<th>ビブラート▼</th>"
+	if sor!=6:add_string "<th>ビブラート</th>"
+	if sor==7:add_string "<th>しゃくり▼</th>"
+	if sor!=7:add_string "<th>しゃくり</th>"
+	if sor==11:add_string "<th>こぶし▼</th>"
+	if sor!=11:add_string "<th>こぶし</th>"
+	if sor==12:add_string "<th>フォール▼</th>"
+	if sor!=12:add_string "<th>フォール</th>"
+	if sor==8:add_string "<th>音程▼</th>"
+	if sor!=8:add_string "<th>音程</th>"
+	if sor==13:add_string "<th>低音▼</th>"
+	if sor!=13:add_string "<th>低音</th>"
+	if sor==14:add_string "<th>高音▼</th>"
+	if sor!=14:add_string "<th>高音</th>"
+	if sor==15:add_string "<Th><FONT size=1>ビブラ<br>ートの<br>上手さ▼</FONT></Th>"
+	if sor!=15:add_string "<Th><FONT size=1>ビブラ<br>ートの<br>上手さ</FONT></Th>"
+	if sor==16:add_string "<Th><FONT size=1>ロング<br>トーン<br>の上手さ▼</FONT></Th>"
+	if sor!=16:add_string "<Th><FONT size=1>ロング<br>トーン<br>の上手さ</FONT></Th>"
+	if sor==10:add_string "<th>抑揚▼</th>"
+	if sor!=10:add_string "<th>抑揚</th>"
+	if sor==9:add_string "<th>リズム▲</th>"
+	if sor!=9:add_string "<th>リズム</th>"
+	if mode==2 {
+		add_string "<th>音程</th>"
+		add_string "<th>安定性</th>"
+		add_string "<th>表現力</th>"
+		add_string "<th>ビブラート</th>"
+		add_string "<th>リズム</th>"
+		add_string "<th>チャート</td>"
+
+	}
+	if sor==0:add_string "<th class=\"right\">精密採点実施日▼</th>"
+	if sor==1:add_string "<th class=\"right\">精密採点実施日▲</th>"
+	if (sor!=1)&(sor!=0):add_string "<th class=\"right\">精密採点実施日</th>"
+	add_string	"</tr>\n"
+	sdim st,100,100
+	for i,0,id,1
+		title "HTML出力中:"+(i+1)+"/"+id
+		add_string	"<tr>\n"
+		st(0)="MS5"
+		if poi(n(i))>=95:st(0)="MS0"
+		if (poi(n(i))>=90)&(poi(n(i))<95):st(0)="MS1"
+		if (poi(n(i))>=85)&(poi(n(i))<90):st(0)="MS2"
+		if (poi(n(i))>=80)&(poi(n(i))<85):st(0)="MS3"
+		if (poi(n(i))>=75)&(poi(n(i))<80):st(0)="MS4"
+		if (mode==0|mode==1) :add_string "<td rowspan=\"2\" class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
+		if mode==2:add_string "<td  class="+st(0)+">"+strf("%2.3f",poi(n(i)))+"<span class=\"ten\">点</span></td>"
+		add_string "<td rowspan=\"2\" class=\"id\">"+strf("%2.3f",max_point(n(i)))+"</td>"
+		add_string "<td class=\"no\">No."+(i+1)+"</td>"
+		add_string "<td class=\"song\">"+son(n(i))+"</td>"
+		add_string "<td>"+vibt(n(i))+"</td>"
+		;しゃくり
+		if mode==2:add_string	"<td class=\"sha\">"+sha(n(i))+"回</td>"
+		if mode!=2:add_string	"<td rowspan=\"2\" class=\"sha\">"+sha(n(i))+"回</td>"
+		;こぶし・フォール
+		if mode==0 {
+			add_string	"<td rowspan=\"2\" class=\"sha\">"+kob(n(i))+"</td>"
+			add_string	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"</td>"
+		}
+		if mode==1 {
+			add_string	"<td rowspan=\"2\" class=\"sha\">"+kob(n(i))+"回</td>"
+			add_string	"<td rowspan=\"2\" class=\"sha\">"+fal(n(i))+"回</td>"
+		} 
+		if mode==2 {
+			add_string	"<td class=\"sha\">"+kob(n(i))+"回</td>"
+			add_string	"<td class=\"sha\">"+fal(n(i))+"回</td>"
+		} 
+		;音程
+		if mode!=2:add_string "<td rowspan=\"2\" class=\"sha\">"+mel(n(i))+"%</td>"
+		if mode==2:add_string "<td class=\"sha\">"+mel(n(i))+"%</td>"
+		;高音・低音
+		if mode==0 {
+			add_string "<td rowspan=\"2\" class=\"sha\"></td>"
+			add_string "<td rowspan=\"2\" class=\"sha\"></td>"
+		}
+		if mode==1 {
+			if int(mell(n(i)))==1:add_string "<td rowspan=\"2\" class=\"sha\">×</td>"
+			if int(mell(n(i)))==2:add_string "<td rowspan=\"2\" class=\"sha\">△</td>"
+			if int(mell(n(i)))==3:add_string "<td rowspan=\"2\" class=\"sha\">○</td>"
+			if int(mell(n(i)))==4:add_string "<td rowspan=\"2\" class=\"sha\">◎</td>"
+			if int(melh(n(i)))==1:add_string "<td rowspan=\"2\" class=\"sha\">×</td>"
+			if int(melh(n(i)))==2:add_string "<td rowspan=\"2\" class=\"sha\">△</td>"
+			if int(melh(n(i)))==3:add_string "<td rowspan=\"2\" class=\"sha\">○</td>"
+			if int(melh(n(i)))==4:add_string "<td rowspan=\"2\" class=\"sha\">◎</td>"
+		}
+		if mode==2 {
+			add_string "<td colspan=\"2\"class=\"sha\">"+ mell(n(i)) + "-" + melh(n(i)) + "<br>(" + lowtess(n(i)) + "-" +hightess(n(i))+ ")</td>"
+		}
+		;ビブラートの上手さ
+		st(1)="R5"
+		if (mode==1|mode==2) {
+			if int(vibi(n(i)))==10:st(1)="R1"
+			if int(vibi(n(i)))==9:st(1)="R2"
+			if int(vibi(n(i)))==8:st(1)="R3"
+			if (int(vibi(n(i)))<=7)&(int(vibi(n(i)))>=5):st(1)="R4"
+		}
+		if mode!=2:add_string "<td rowspan=\"2\" class="+st(1)+">"+vibi(n(i))+"</td>"
+		if mode==2:add_string "<td class="+st(1)+">"+vibi(n(i))+"</td>"		
+
+		;ロングトーンの上手さ
+		st(1)="R5"
+		if (mode==1|mode==2) {
+			if int(lont(n(i)))==10:st(1)="R1"
+			if int(lont(n(i)))==9:st(1)="R2"
+			if int(lont(n(i)))==8:st(1)="R3"
+			if (int(lont(n(i)))<=7)&(int(lont(n(i)))>=5):st(1)="R4"
+		}
+		if mode!=2:add_string "<td rowspan=\"2\" class="+st(1)+">"+lont(n(i))+"</td>"
+		if mode==2:add_string "<td class="+st(1)+">"+lont(n(i))+"</td>"
+
+		;抑揚
+		st(1)="R5"
+		if int(yok(n(i)))==10:st(1)="R1"
+		if int(yok(n(i)))==9:st(1)="R2"
+		if int(yok(n(i)))==8:st(1)="R3"
+		if (int(yok(n(i)))<=7)&(int(yok(n(i)))>=5):st(1)="R4"
+		if mode!=2:add_string "<td rowspan=\"2\" class="+st(1)+">"+yok(n(i))+"</td>"
+		if mode==2:add_string "<td class="+st(1)+">"+yok(n(i))+"</td>"
+
+		;リズム
+		if (mode==0|mode==1) {
+			if int(rhy(n(i)))==-4:rhyt(n(i))="+4"
+			if int(rhy(n(i)))==-3:rhyt(n(i))="+3"
+			if int(rhy(n(i)))==-2:rhyt(n(i))="+2"
+			if int(rhy(n(i)))==-1:rhyt(n(i))="+1"
+			if int(rhy(n(i)))==0: rhyt(n(i))="±0"
+			if int(rhy(n(i)))==1:rhyt(n(i))="-1"
+			if int(rhy(n(i)))==2:rhyt(n(i))="-2"
+			if int(rhy(n(i)))==3:rhyt(n(i))="-3"
+			if int(rhy(n(i)))==4:rhyt(n(i))="-4"
+			add_string "<td rowspan=\"2\" class=\"sha\">"+rhyt(n(i))+"</td>"
+		}
+		;チャート
+		if mode==2 {
+			add_string "<td class=\"sha\">"+rhy(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+mel(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+chstab(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+chexpress(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+chvib(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+chrhy(n(i))+"</td>"
+		}
+		if mode==2 {
+			string="http:\/\/chart.apis.google.com\/chart?cht=r&chxt=y,x&chls=4|4&chco=FF0000,00FF00&chxp=0,0,20,40,60,80,100&chd=t:"+avgpitch(n(i))
+			string = string + ","+ avgstab(n(i)) +"," + avgexpress(n(i)) + "," + avgvib(n(i)) + "," + avgrhy(n(i)) + "," + avgpitch(n(i))
+			string = string + "|" + mel(n(i)) + "," + chstab(n(i)) + "," + chexpress(n(i)) + "," + chvib(n(i)) + "," + chrhy(n(i)) + "," + mel(n(i))
+			string = string + "&chxl=1:|%e9%9f%b3%e7%a8%8b|%e5%ae%89%e5%ae%9a%e6%80%a7|%e8%a1%a8%e7%8f%be%e5%8a%9b|%e3%83%93%e3%83%96%e3%83%a9%e3%83%bc%e3%83%88|%e3%83%aa%e3%82%ba%e3%83%a0"
+			string = string + "&chm=s,FF0000,0,-1,12,0|s,FFFFFF,0,-1,8,0|o,00FF00,1,-1,12,0|o,FFFFFF,1,-1,8,0&chts=000000,13
+				encode_init
+				pStr = ""+art(n(i))+"／"+son(n(i))+"  ("+no1(n(i))+"-"+no2(n(i))+")"
+			
+				sdim encbuf
+				repeat encode(pStr, CODEPAGE_S_JIS, dStr, CODEPAGE_UTF_8)
+					tmp = peek(dStr, cnt)
+					if range(tmp, 0x29, 0x3a) | range(tmp, 0x40, 0x5b) | range(tmp, 0x60, 0x7b) {
+						encbuf += strf("%c", tmp)
+					} else {
+						encbuf += strf("%%%02x", tmp)
+					}
+				loop
+			;	mes encbuf
+
+			string = string + "&chtt=" + encbuf
+			string = string + "&chdl=%e5%85%a8%e5%9b%bd%e5%b9%b3%e5%9d%87|%e8%87%aa%e5%88%86&chs=350x260"
+			add_string "<td rowspan=\"2\" class=\"sha\"><a href="+ string +" target=_blank>見る<\/a><\/td>"
+
+		}
+		add_string "<td rowspan=\"2\" class=\"sha\">"+tim1(n(i))+"/"+tim2(n(i))+"/"+tim3(n(i))+" "+tim4(n(i))+":"+tim5(n(i))+":"+tim6(n(i))+"</td>"
+		add_string "</tr>"
+		add_string	"<tr>"
+		;全国平均点
+		if mode==2:add_string "<td class=\"id\">("+strf("%2.3f",avgtotal(n(i)))+"点)</td>"
+		add_string "<td class=\"id\">"+no1(n(i))+"-"+no2(n(i))+"</td>"
+		add_string "<td class=\"singer\">"+art(n(i))+"</td>"
+		add_string	"<td class=\"vib\">"+strf("%2.1f",vib(n(i)))+"秒</td>"
+		if mode==2 {
+			;声域(鍵盤表示)
+			add_string "<td colspan=10 class=sha>"
+			add_string "<TABLE style=\"border:2px solid #000000; border-collapse:collapse;\">"
+			add_string "<tr>"
+			key=41:gosub *hakken13
+			key=42:gosub *kokken
+			key=43:gosub *hakken12
+			key=44:gosub *kokken
+			key=45:gosub *hakken12
+			key=46:gosub *kokken
+			key=47:gosub *hakken13
+	
+			for cha,0,3,1
+				key=cha*12+48:gosub *hakken13
+				key=cha*12+49:gosub *kokken		
+				key=cha*12+50:gosub *hakken12				
+				key=cha*12+51:gosub *kokken
+				key=cha*12+52:gosub *hakken13
+				key=cha*12+53:gosub *hakken13
+				key=cha*12+54:gosub *kokken
+				key=cha*12+55:gosub *hakken12
+				key=cha*12+56:gosub *kokken
+				key=cha*12+57:gosub *hakken12
+				key=cha*12+58:gosub *kokken
+				key=cha*12+59:gosub *hakken13
+			next
+			add_string "</tr><tr>"
+			key=41:gosub *hakken24
+			key=43:gosub *hakken24
+			key=45:gosub *hakken24
+			key=47:gosub *hakken24
+
+			for cha,0,3,1
+				key=cha*12+48:gosub *hakken25
+				key=cha*12+50:gosub *hakken24
+				key=cha*12+52:gosub *hakken24
+				key=cha*12+53:gosub *hakken24
+				key=cha*12+55:gosub *hakken24
+				key=cha*12+57:gosub *hakken24
+				key=cha*12+59:gosub *hakken24
+			next
+			add_string "</tr>"
+			add_string "</table>"
+			add_string "</td>"
+		
+			;チャートパラメータ
+			add_string "<td class=\"sha\">"+avgpitch(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+avgstab(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+avgexpress(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+avgvib(n(i))+"</td>"
+			add_string "<td class=\"sha\">"+avgrhy(n(i))+"</td>"
+		}
+		add_string "</tr>\n"
+	next
+	add_string "</table><br>"
+	add_string "集計 by "+seimituhan
+	add_string "<br><hr>"
+	add_string"</body></html>"
+	get_string buff
+ 	bsave filename(1),buff,-1
+#endif
+
+	time(1)=double(double(gettime(7))/1000+gettime(0)*365*30*3600*24+gettime(1)*30*3600*24+gettime(3)*3600*24+gettime(4)*3600+gettime(5)*60+gettime(6))
+ 	dialog "ファイルを"+filename(1)+"に保存しました。\n経過時間"+strf("%2.3f",(time(1)-time(0)))+"秒\n集計"+strf("%2.3f",(time(3)-time(2)))+"秒\nHTML出力"+strf("%2.3f",(time(1)-time(4)))+"秒",0,"終了" 
 	stop
 ;==============================================================
 *txtsave
@@ -1487,6 +1796,7 @@ if sor==16 {
 ;無 key>=lowtess(n(i))かつkey<=hightess(n(i))
 ;赤 key>mell(n(i))かつkey<lowtess(n(i))、または、key<=melh(n(i))かつkey>hightess(n(i))
 
+#if 0
 *kokken
 	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
 		noteadd "<TD colspan=2 bgcolor=#717075>&nbsp;</TD>";<!-- 黒 "+key+"-->";灰
@@ -1563,4 +1873,82 @@ if sor==16 {
 		noteadd "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD>";<!-- "+key+" -->";赤
 	}	
 	return
+#else
+*kokken
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		add_string "<TD colspan=2 bgcolor=#717075>&nbsp;</TD>";<!-- 黒 "+key+"-->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		add_string "<TD colspan=2 bgcolor=#000000>&nbsp;</TD>";<!-- 黒 "+key+"-->";無
+	} 
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		add_string "<TD colspan=2 bgcolor=#742226>&nbsp;</TD>";<!-- 黒 "+key+"-->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		add_string "<TD colspan=2 bgcolor=#742226>&nbsp;</TD>";<!-- 黒 "+key+"-->";赤
+	}
+	return
+	stop
+*hakken12
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		add_string "<TD colspan=2 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD>";<!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		add_string "<TD colspan=2 class=\"hakken1\">&nbsp;</TD>";<!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		add_string "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		add_string "<TD colspan=2 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
+	}
+	return
+	stop
+
+*hakken13
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		add_string "<TD colspan=3 class=\"hakken1\" bgcolor=#96959d>&nbsp;</TD>";<!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		add_string "<TD colspan=3 class=\"hakken1\">&nbsp;</TD>";<!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		add_string "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		add_string "<TD colspan=3 class=\"hakken1\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
+	}
+	return
+	stop
+*hakken24
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		add_string "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>&nbsp;</TD>";<!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		add_string "<TD colspan=4 class=\"hakken2\">&nbsp;</TD>";<!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		add_string "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		add_string "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>&nbsp;</TD>";<!-- "+key+" -->";赤
+	}	
+	return
+	stop
+*hakken25
+	;Cの印がついた鍵盤
+	if (key<int( mell( n(i) ) )|key>int( melh( n(i) ) )) {
+		add_string "<TD colspan=4 class=\"hakken2\" bgcolor=#96959d>・</TD>";<!-- "+key+" -->";灰
+	}
+	if (key>=int(lowtess(n(i))) & key<=int(hightess(n(i)))) {
+		add_string "<TD colspan=4 class=\"hakken2\">・</TD>";<!-- "+key+" -->";無
+	}
+	if (key>=int( mell( n(i) ) )&key<int(lowtess(n(i)))) {
+		add_string "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD>";<!-- "+key+" -->";赤
+	}
+	if (key<=int( melh( n(i) ) ) &key>int(hightess(n(i)))) {
+		add_string "<TD colspan=4 class=\"hakken2\" bgcolor=#ee8a90>・</TD>";<!-- "+key+" -->";赤
+	}	
+	return
+#endif
 	stop
